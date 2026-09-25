@@ -12,4 +12,4 @@ object Tally:
 
 object Main extends ZIOAppDefault:
   def run =
-    Tally.lengths(List("ada", "grace")).flatMap(tally => Console.printLine(tally.toString)).provide(Greeter.layer)
+    Tally.lengths(List("ada", "joan")).flatMap(tally => Console.printLine(tally.toString)).provide(Greeter.layer)
