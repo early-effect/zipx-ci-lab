@@ -5,7 +5,7 @@ import lab.models.Name
 import zio.*
 
 object Styled:
-  def greeting(name: Name): URIO[Greeter, fansi.Str] = Greeter.greet(name).map(fansi.Color.Green(_))
+  def greeting(name: Name): URIO[Greeter, fansi.Str] = Greeter.greet(name).map(fansi.Color.Cyan(_))
 
 object Main extends ZIOAppDefault:
   def run =
