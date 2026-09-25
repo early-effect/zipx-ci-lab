@@ -81,31 +81,45 @@ final case class ApiCache(key: String, ref: String, sizeInBytes: Long) derives J
 final case class ApiCaches(totalCount: Int, actionsCaches: List[ApiCache]) derives JsonDecoder
 
 /** What one job's log says about cache traffic, compilation, and tests. */
+/** What one job's log says about the build cache, compilation, and tests. */
 final case class LogFacts(
     restoredKey: Option[String],
     cacheMiss: Boolean,
     savedKeys: List[String],
-    compiles: Int,
+    compiled: List[String],
+    metaBuildCompiled: Boolean,
     suites: List[String],
 )
 
 object LogFacts:
-  private val Ansi      = "\u001b\\[[0-9;]*m"
+  private val Ansi      = "\u001b\\[[0-9;?]*[A-Za-z]"
+  private val Timestamp = """^\d{4}-\d\d-\d\dT[\d:.]+Z ?"""
   private val Restored  = """Cache restored from key: (\S+)""".r.unanchored
   private val Saved     = """Cache saved with key: (\S+)""".r.unanchored
-  private val Compiling = """\[info\] compiling \d+ """.r.unanchored
-  // ZIO Test prints a top-level suite as `[info] + <label>`; nested suites and tests are indented.
-  private val Suite = """\[info\] \+ (\S.*)$""".r.unanchored
+  private val Missed    = """Cache not found for input keys: ([^,\s]+)""".r.unanchored
+  private val Compiling = """\[info\] \[([^\]]+)\] compiling \d+ .* to (\S+)""".r.unanchored
+  // ZIO Test prints a top-level suite unindented as `+ <label>`; its tests are indented under it.
+  private val Suite = """^\+ (.+)$""".r
+
+  /** zipx's LocalDir build cache. setup-sbt keeps its own launcher cache (`…-sbt-runner-…`), which is not the build. */
+  def isBuildCache(key: String): Boolean = key.contains("-sbt-") && !key.contains("-sbt-runner-")
+
+  /** `[models] … to …/models/test-classes` is `models/test`; `…/classes` is plain `models`. */
+  private def target(module: String, dir: String): String =
+    if dir.endsWith("test-classes") then s"$module/test" else module
 
   def from(log: String): LogFacts =
-    val lines = log.linesIterator.map(_.replaceAll(Ansi, "")).toList
+    val lines    = log.linesIterator.map(_.replaceAll(Ansi, "").replaceFirst(Timestamp, "")).toList
+    val compiles = lines.collect { case Compiling(module, dir) => module -> dir }
     LogFacts(
-      restoredKey = lines.collectFirst { case Restored(key) => key },
-      cacheMiss = lines.exists(_.contains("Cache not found for input keys")),
-      savedKeys = lines.collect { case Saved(key) => key },
-      compiles = lines.count(Compiling.matches),
-      suites = lines.collect { case Suite(label) => label.trim }.distinct,
+      restoredKey = lines.collectFirst { case Restored(key) if isBuildCache(key) => key },
+      cacheMiss = lines.exists { case Missed(key) => isBuildCache(key); case _ => false },
+      savedKeys = lines.collect { case Saved(key) if isBuildCache(key) => key },
+      compiled = compiles.collect { case (m, dir) if !m.endsWith("-build") => target(m, dir) }.distinct.sorted,
+      metaBuildCompiled = compiles.exists((m, _) => m.endsWith("-build")),
+      suites = lines.collect { case Suite(label) => label.trim }.distinct.sorted,
     )
+  end from
 end LogFacts
 
 final case class JobReport(
@@ -115,11 +129,14 @@ final case class JobReport(
     restoredKey: Option[String],
     cacheMiss: Boolean,
     savedKeys: List[String],
-    compiles: Int,
+    compiled: List[String],
+    metaBuildCompiled: Boolean,
     suites: List[String],
 ) derives JsonEncoder
 
-final case class CacheReport(entries: Int, totalBytes: Long, mainPresent: Boolean, keys: List[String])
+final case class CacheEntry(ref: String, key: String, megabytes: Long) derives JsonEncoder
+
+final case class CacheReport(entries: Int, totalBytes: Long, mainPresent: Boolean, build: List[CacheEntry])
     derives JsonEncoder
 
 final case class RunReport(
@@ -156,7 +173,8 @@ object Jobs:
       restoredKey = facts.restoredKey,
       cacheMiss = facts.cacheMiss,
       savedKeys = facts.savedKeys,
-      compiles = facts.compiles,
+      compiled = facts.compiled,
+      metaBuildCompiled = facts.metaBuildCompiled,
       suites = facts.suites,
     )
 end Jobs
@@ -166,6 +184,10 @@ final case class Gh(repo: Repo):
     text(path).flatMap(body => ZIO.fromEither(body.fromJson[A]).mapError(MeasureError.Decode(path, _)))
 
   def text(path: String): IO[MeasureError, String] = Gh.exec(List("gh", "api", s"repos/${repo.value}/$path"))
+
+  /** Job logs carry ANSI colour codes, which `gh api` refuses to print without the flag. [[LogFacts]] strips them. */
+  def jobLog(jobId: Long): IO[MeasureError, String] =
+    Gh.exec(List("gh", "api", "--allow-escape-sequences", s"repos/${repo.value}/actions/jobs/$jobId/logs"))
 
 object Gh:
   def layer(repo: Repo): ULayer[Gh] = ZLayer.succeed(Gh(repo))
@@ -199,9 +221,7 @@ object Report:
         _      <- ZIO.fail(MeasureError.TooManyJobs(page.totalCount)).when(page.totalCount > page.jobs.size)
         ran = page.jobs.filter(Jobs.ran)
         jobs <- ZIO
-          .foreachPar(ran)(job =>
-            gh.text(s"actions/jobs/${job.id}/logs").map(log => Jobs.report(job, LogFacts.from(log)))
-          )
+          .foreachPar(ran)(job => gh.jobLog(job.id).map(log => Jobs.report(job, LogFacts.from(log))))
           .withParallelism(8)
         caches <- gh.json[ApiCaches]("actions/caches?per_page=100")
       yield RunReport(
@@ -219,8 +239,10 @@ object Report:
         cache = CacheReport(
           entries = caches.totalCount,
           totalBytes = caches.actionsCaches.map(_.sizeInBytes).sum,
-          mainPresent = caches.actionsCaches.exists(_.ref == "refs/heads/main"),
-          keys = caches.actionsCaches.map(c => s"${c.ref} ${c.key}"),
+          mainPresent = caches.actionsCaches.exists(c => c.ref == "refs/heads/main" && LogFacts.isBuildCache(c.key)),
+          build = caches.actionsCaches
+            .filter(c => LogFacts.isBuildCache(c.key))
+            .map(c => CacheEntry(c.ref, c.key, c.sizeInBytes / (1024 * 1024))),
         ),
       )
     }
