@@ -61,15 +61,19 @@ final case class ApiRun(
     status: String,
     conclusion: Option[String],
     createdAt: Instant,
-    runStartedAt: Option[Instant],
 ) derives JsonDecoder
 
 @jsonMemberNames(SnakeCase)
 final case class ApiStep(name: String, conclusion: Option[String]) derives JsonDecoder
 
 @jsonMemberNames(SnakeCase)
-final case class ApiJob(id: Long, name: String, conclusion: Option[String], steps: List[ApiStep] = Nil)
-    derives JsonDecoder
+final case class ApiJob(
+    id: Long,
+    name: String,
+    conclusion: Option[String],
+    createdAt: Instant,
+    steps: List[ApiStep] = Nil,
+) derives JsonDecoder
 
 @jsonMemberNames(SnakeCase)
 final case class ApiJobs(totalCount: Int, jobs: List[ApiJob]) derives JsonDecoder
@@ -230,8 +234,11 @@ object Report:
         branch = apiRun.headBranch,
         sha = apiRun.headSha,
         conclusion = apiRun.conclusion,
-        pendingSeconds =
-          apiRun.runStartedAt.fold(0L)(started => JDuration.between(apiRun.createdAt, started).toSeconds),
+        // A run held by its concurrency group has `run_started_at` set already; its jobs appear when it is released.
+        pendingSeconds = page.jobs
+          .map(_.createdAt)
+          .minOption
+          .fold(0L)(firstJob => JDuration.between(apiRun.createdAt, firstJob).toSeconds),
         jobsRan = jobs.map(_.name),
         jobsWorked = jobs.filter(_.didWork).map(_.name),
         cacheSaves = jobs.map(_.savedKeys.size).sum,
