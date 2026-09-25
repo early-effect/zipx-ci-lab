@@ -83,6 +83,12 @@ Every claim measured so far reproduced. Run ids are in `early-effect/zipx-ci-lab
 
 One run outside the scenario list: 36153908391 changed only `lab/`, which no module owns. `affected` was `[]`, and `test` still ran all 6 suites while `image-it` and `legacy` both ran.
 
+## Fix results
+
+| # | zipx branch | Runs | Measured |
+| --- | --- | --- | --- |
+| L1 | [#160](https://github.com/early-effect/zipx/pull/160), `0.11.1-cachemodes-18852bcf` | 36174987364, 36174988651, 36174987715, 36174986740, then two re-push waves (36178784901 onward, 36180280788 onward) | **Pass.** 1 build-cache save per run in all 12 runs. First push: `test` restored `main`'s `build` rehydrate entry and compiled only `svcA` and `svcAJS`; `image` rows compiled nothing or `svcA` alone. Re-pushes: `test` restored the PR's own previous save and compiled nothing. `main`'s `build` entry was still present after 13 runs with the repo over quota. The lab ran the builtin `test`, with coverage on a label, since coverage recompiles everything whatever the cache holds (L2). |
+
 ## Environments
 
 - `lab-stg`: open.
