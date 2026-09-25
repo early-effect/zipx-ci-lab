@@ -136,7 +136,8 @@ lazy val root = (project in file("."))
 
 // --- zipx --------------------------------------------------------------------
 // Mirrors a production monorepo's configuration on purpose, pathologies included: images and deploys on every merge
-// to main, Once Verify jobs with no affected gate. Coverage as the required `test` was the 0.11.0 baseline.
+// to main, Once Verify jobs with no affected gate. Coverage as the required `test` was the 0.11.0 baseline; zipx now
+// refuses it.
 
 zipxJavaVersion      := JdkVersion("25")
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
@@ -150,9 +151,15 @@ zipxEnv += ("GITHUB_TOKEN" -> EnvValue.githubToken)
 
 val onMainPush = JobCondition.eventIs("push") && JobCondition.refIs("refs/heads/main")
 
-// The builtin test owns the LocalDir build snapshot; coverage compiles with other scalac options, so it only runs on a
-// labeled PR and never saves.
-zipxCapabilities += Coverage.once(condition = Some(JobCondition.hasPrLabel("coverage")))
+// The builtin test owns the LocalDir build snapshot. Coverage runs in zipx-coverage.yml, restores that snapshot, and
+// never saves one.
+zipxCoverageWorkflow := Some(
+  Coverage.workflow(
+    CoverageTrigger.Scheduled(Cron.daily(hour = 3)),
+    CoverageTrigger.Dispatch,
+    CoverageTrigger.prLabel("coverage"),
+  )
+)
 
 zipxCapabilities += ZipxModver
   .publish(
@@ -187,13 +194,15 @@ zipxCapabilities += Capability
     matrixCollapse = Some(MatrixCollapse.Off),
   )
 
-zipxCapabilities += zipxTasks.custom(
-  name = CapabilityName("image"),
-  command = Docker / publishLocal,
-  participates = n => LabImages.All.contains(n.id),
-  phase = Phase.Verify,
-  gate = Gate.Always,
-)
+zipxCapabilities += zipxTasks
+  .custom(
+    name = CapabilityName("image"),
+    command = Docker / publishLocal,
+    participates = n => LabImages.All.contains(n.id),
+    phase = Phase.Verify,
+    gate = Gate.Always,
+  )
+  .withPostSteps(LabChecks.uninstrumented)
 
 zipxCapabilities += zipxTasks.once(
   name = CapabilityName("image-it"),
