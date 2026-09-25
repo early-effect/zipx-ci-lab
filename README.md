@@ -19,7 +19,7 @@ that make gating ineffective in a real monorepo:
 
 | Setting | Effect today |
 | --- | --- |
-| `Coverage.once(name = test)` | Coverage is the required `test` job, runs over the whole build, and saves its instrumented snapshot under the shared cache prefix. |
+| `Coverage.once(name = test)` (0.11.0 baseline) | Coverage is the required `test` job, runs over the whole build, and saves its instrumented snapshot under the shared cache prefix. The lab now uses `Coverage.workflow` (L2). |
 | `docker`, `registry`, `deploy-workers` on every push to `main` | Every merge builds and pushes images and deploys to `lab-stg` and `lab-prd`. |
 | `lab-prd` requires a reviewer | A waiting approval holds the `CI-refs/heads/main` concurrency group. |
 | `ShipGroup libs` (`models`, `lib`) | Library publish to this repo's GitHub Packages. Ship rows also turn off cancel-in-progress on `main`. |
@@ -58,7 +58,7 @@ Each baseline must fail as stated on sbt-zipx 0.11.0. A baseline that does not f
 | # | Scenario | 0.11.0 baseline (expected failure) | Pass criterion after the fix |
 | --- | --- | --- | --- |
 | L1 | Four PRs, each touching only `svcA` sources | main's entry is evicted by the third run; `test` restores a non-test entry; all modules recompile | one save per run; `test` restores the build entry from main; recompiles only `svcA`; main's entry survives 10 runs |
-| L2 | Coverage on a labeled PR, then an image build | `image` restores the instrumented entry and recompiles | the coverage workflow saves nothing; the staged `svcA` jar has no scoverage reference; `image` recompiles nothing |
+| L2 | Coverage on a labeled PR, then an image build | `image` restores the instrumented entry and recompiles | the coverage workflow saves nothing; no class the `image` job compiled or restored references `coverage/Invoker`; `image` recompiles nothing |
 | L3 | Merge A, deploy waits on `lab-prd`; merge B; merge C | B stays pending behind A's approval; C cancels pending B | merges run no image or deploy jobs; a dispatched `prd` deploy waits while B's and C's CI completes |
 | L4 | Deploy `changed` to `stg` twice, one `svcB` merge between | no such workflow | the second plan is `svcB` only, resolved from the Deployments API; an existing image tag is not rebuilt |
 | L5 | A `lib`-only change, and an `svcA`-only change | `test` runs every suite; `image-it` and `legacy` run regardless | `test` runs only the affected closure; `image-it` runs for `svcA` and skips for a worker-only change; `legacy` skips |
@@ -88,6 +88,7 @@ One run outside the scenario list: 36153908391 changed only `lab/`, which no mod
 | # | zipx branch | Runs | Measured |
 | --- | --- | --- | --- |
 | L1 | [#160](https://github.com/early-effect/zipx/pull/160), `0.11.1-cachemodes-18852bcf` | 36174987364, 36174988651, 36174987715, 36174986740, then two re-push waves (36178784901 onward, 36180280788 onward) | **Pass.** 1 build-cache save per run in all 12 runs. First push: `test` restored `main`'s `build` rehydrate entry and compiled only `svcA` and `svcAJS`; `image` rows compiled nothing or `svcA` alone. Re-pushes: `test` restored the PR's own previous save and compiled nothing. `main`'s `build` entry was still present after 13 runs with the repo over quota. The lab ran the builtin `test`, with coverage on a label, since coverage recompiles everything whatever the cache holds (L2). |
+| L2 | [#161](https://github.com/early-effect/zipx/pull/161), `0.11.2-coverage-b348d41` | coverage: 36195519814 (labeled PR #21), 36195830706 (re-push), 36195672471 (dispatch on `main`), 36196537090 (unrelated label); `ci.yml`: 36195518972, 36195830801 | **Pass.** Coverage runs in `zipx-coverage.yml`: 0 build-cache saves in all 3 coverage runs, each restoring a plain `build` entry, and no cache entry carries a coverage key. On both pushes `image (svcA)` compiled nothing, and a step found no class under `target/out/jvm` referencing `coverage/Invoker`. Adding `documentation` to the labeled PR started a coverage run whose job skipped; the `opened` run was cancelled by the `labeled` one. The baseline's local check looked for "scoverage", but Scala 3 instruments with `scala/runtime/coverage/Invoker`, so this check reads class files for `coverage/Invoker`. |
 
 ## Environments
 
