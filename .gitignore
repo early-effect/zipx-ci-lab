@@ -1,0 +1,12 @@
+.DS_Store
+target/
+.sbt/
+.scala-build/
+project/project/
+.bsp/
+.bloop/
+.metals/
+metals.sbt
+*.semanticdb
+.idea/
+.vscode/
