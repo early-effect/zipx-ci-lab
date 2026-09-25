@@ -39,6 +39,18 @@ It prints one JSON report per run: the jobs that ran, the jobs that did real wor
 saved, the number of `compiling` lines per job, the suites that ran, the repo's cache usage, and how long the run sat
 pending. It needs an authenticated `gh`.
 
+## Testing a zipx branch
+
+A zipx branch under test is published into `project/zipx-snapshot/` as a Maven directory and committed, so CI resolves
+it without a registry token. `project/resolvers.sbt` points the meta-build at it. From the zipx clone, on the branch:
+
+```
+sbt 'set ThisBuild / version := "<next>-<topic>-<sha8>"; set every publishTo := Some(MavenCache("zipx-snapshot", file("<lab>/project/zipx-snapshot"))); set every packageDoc / publishArtifact := false; set every packageSrc / publishArtifact := false; publish'
+```
+
+Then set that version in `project/plugins.sbt`, run `sbt zipxWorkflowGenerate` here, and open a PR. Delete the old
+version's directory when you replace it.
+
 ## Scenarios
 
 Each baseline must fail as stated on sbt-zipx 0.11.0. A baseline that does not fail disproves its claim.

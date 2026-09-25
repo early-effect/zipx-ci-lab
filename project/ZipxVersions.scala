@@ -4,7 +4,7 @@ import zipx.*
   * catalog-aware affected gating (scenario L6).
   */
 object LabVersions extends ZipxVersions:
-  val sbt: SbtVersion      = SbtVersion("2.1.0-M1")
+  val sbt: SbtVersion      = SbtVersion("2.1.0-M2")
   val scala: ScalaVersion  = ScalaVersion("3.9.0")
   val scala2: ScalaVersion = ScalaVersion("2.13.18")
 
