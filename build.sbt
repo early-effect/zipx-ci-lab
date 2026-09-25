@@ -50,7 +50,8 @@ lazy val svcA = (projectMatrix in file("modules/svc-a"))
       p.dependsOn(lib)
         .enablePlugins(JavaAppPackaging, DockerPlugin)
         .settings(LabVersions.svcA, LabVersions.jvmTests)
-        .settings(LabImages.settings("svcA", "lab.svca.Main")),
+        .settings(LabImages.settings("svcA", "lab.svca.Main"))
+        .settings(dockerExposedPorts := Seq(8080)),
   )
   .jsPlatform(scalaVersions = Seq(LabVersions.scala), settings = Seq(coverageEnabled := false))
 
