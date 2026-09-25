@@ -4,32 +4,32 @@ description: JDK, sbt, optional Node, and LocalDir sbt cache (checkout is a prio
 inputs:
   java-version:
     description: Temurin JDK version
-    required: "true"
+    required: true
   runner-os:
     description: Runner OS label used in the cache key prefix
-    required: "true"
+    required: true
   cache-key-suffix:
     description: Per-job suffix so same-run saves (one per Layer wave) do not race on one cache key
-    required: "true"
+    required: true
   node-version:
     description: Optional Node version; empty skips setup-node
-    required: "false"
+    required: false
     default: ""
   sbt-disk-cache:
     description: Passed to sbt/setup-sbt disk-cache
-    required: "false"
+    required: false
     default: "false"
   cache-mode:
     description: "LocalDir sbt cache: save (restore, then save this job's build snapshot), restore (restore only), or off"
-    required: "false"
+    required: false
     default: restore
   cache-epoch:
     description: Fixed cache epoch; when non-empty skips git-tag resolve and keys the cache with this value
-    required: "false"
+    required: false
     default: ""
   coursier:
     description: When true, install cs via coursier/setup-action so the job can launch zipx-cli
-    required: "false"
+    required: false
     default: "false"
 runs:
   using: composite

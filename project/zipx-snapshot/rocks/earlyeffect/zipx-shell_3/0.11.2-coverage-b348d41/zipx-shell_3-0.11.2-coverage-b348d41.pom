@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>rocks.earlyeffect</groupId>
+    <artifactId>zipx-shell_3</artifactId>
+    <version>0.11.2-coverage-b348d41</version>
+    <packaging>jar</packaging>
+    <name>zipx-shell</name>
+    <description>Typed, composable shell script AST with compile-time-validated primitives</description>
+    <url>https://github.com/early-effect/zipx</url>
+    <organization>
+        <name>Early Effect</name>
+        <url>https://www.earlyeffect.rocks</url>
+    </organization>
+    <scm>
+        <url>https://github.com/early-effect/zipx</url>
+        <connection>scm:git@github.com:early-effect/zipx.git</connection>
+    </scm>
+    <developers>
+        <developer>
+            <id>russwyte</id>
+            <name>Russ White</name>
+            <url>https://github.com/russwyte</url>
+            <email>356303+russwyte@users.noreply.github.com</email>
+        </developer>
+    </developers>
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <properties>
+        <info.versionScheme>early-semver</info.versionScheme>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala3-library_3</artifactId>
+            <version>3.9.0</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.zio</groupId>
+            <artifactId>zio_3</artifactId>
+            <version>2.1.26</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.zio</groupId>
+            <artifactId>zio-test_3</artifactId>
+            <version>2.1.26</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.zio</groupId>
+            <artifactId>zio-test-sbt_3</artifactId>
+            <version>2.1.26</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.kitlangton</groupId>
+            <artifactId>neotype_3</artifactId>
+            <version>0.7.0</version>
+        </dependency>
+    </dependencies>
+</project>

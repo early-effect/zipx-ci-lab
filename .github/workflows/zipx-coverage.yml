@@ -14,7 +14,7 @@ permissions:
   contents: read
 concurrency:
   group: zipx-coverage-${{ github.ref }}
-  cancel-in-progress: "true"
+  cancel-in-progress: true
 jobs:
   coverage:
     name: coverage
