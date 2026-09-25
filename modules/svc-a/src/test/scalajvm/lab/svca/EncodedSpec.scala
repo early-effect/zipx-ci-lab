@@ -14,7 +14,7 @@ object EncodedSpec extends ZIOSpecDefault:
       yield assertTrue(hex == "68656c6c6f2c20616461")
     },
     test("banner names the service") {
-      assertTrue(Name.make("ada").map(Banner.of) == Right("[svc-a] ada"))
+      assertTrue(Name.make("ada").map(Banner.of) == Right("[svc-a] hello, ada"))
     },
   ).provide(Greeter.layer)
 end EncodedSpec
