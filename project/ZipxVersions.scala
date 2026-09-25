@@ -11,7 +11,7 @@ object LabVersions extends ZipxVersions:
   val zio        = Lib("dev.zio", "zio", "2.1.26")
   val zioTestSbt = zio.mod("zio-test-sbt").test
   val scodecBits = Lib("org.scodec", "scodec-bits", "1.2.5")
-  val fansi      = Lib("com.lihaoyi", "fansi", "0.5.1")
+  val fansi      = Lib("com.lihaoyi", "fansi", "0.5.0")
 
   val nativePackager = Plugin("com.github.sbt", "sbt-native-packager", "1.11.7")
   val scalafmt       = Plugin("org.scalameta", "sbt-scalafmt", "2.6.2")
