@@ -135,8 +135,8 @@ lazy val root = (project in file("."))
   )
 
 // --- zipx --------------------------------------------------------------------
-// Mirrors a production monorepo's configuration on purpose, pathologies included: coverage as the required `test`,
-// images and deploys on every merge to main, Once Verify jobs with no affected gate.
+// Mirrors a production monorepo's configuration on purpose, pathologies included: images and deploys on every merge
+// to main, Once Verify jobs with no affected gate. Coverage as the required `test` was the 0.11.0 baseline.
 
 zipxJavaVersion      := JdkVersion("25")
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
@@ -150,7 +150,9 @@ zipxEnv += ("GITHUB_TOKEN" -> EnvValue.githubToken)
 
 val onMainPush = JobCondition.eventIs("push") && JobCondition.refIs("refs/heads/main")
 
-zipxCapabilities += Coverage.once(name = Capability.TestName)
+// The builtin test owns the LocalDir build snapshot; coverage compiles with other scalac options, so it only runs on a
+// labeled PR and never saves.
+zipxCapabilities += Coverage.once(condition = Some(JobCondition.hasPrLabel("coverage")))
 
 zipxCapabilities += ZipxModver
   .publish(
