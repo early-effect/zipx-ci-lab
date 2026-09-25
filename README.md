@@ -52,7 +52,7 @@ Each baseline must fail as stated on sbt-zipx 0.11.0. A baseline that does not f
 | L5 | A `lib`-only change, and an `svcA`-only change | `test` runs every suite; `image-it` and `legacy` run regardless | `test` runs only the affected closure; `image-it` runs for `svcA` and skips for a worker-only change; `legacy` skips |
 | L6 | Bump `fansi`, a row only `svcB` uses | affected is `all` | affected is `svcB` |
 | L7 | Edit one setting in `svcA`'s block; separately edit a shared `val` | both give `all` | the first gives `svcA`; the second stays `all` |
-| L8 | A per-commit value (`BuildInfo` git hash) in `lib`, then an unrelated `svcB` change | every module downstream of `lib` misses the compile cache on every commit | only `svcB` compiles; the per-commit value no longer reaches a compiled source |
+| L8 | A per-commit value (`BuildInfo` git hash) in `lib`, then a commit that changes nothing else | every module downstream of `lib` recompiles on every commit | disproven locally; see the results |
 
 ## Baseline results (sbt-zipx 0.11.0)
 
@@ -67,7 +67,7 @@ Every claim measured so far reproduced. Run ids are in `early-effect/zipx-ci-lab
 | L5 | 36154112865 (`lib`), 36154113117 (`workerB`) | `lib`: `affected` = lib plus its 4 dependents. `workerB`: `affected` = `["workerB"]`. Both ran all 6 suites, `image-it`, and `legacy`. |
 | L6 | 36154111518 | `affected` = every module, from a catalog row only `svcB` selects. |
 | L7 | 36154114240 (`svcA` setting), 36154113879 (shared `val`) | Both `affected` = every module. |
-| L8 | not run | Added after the first baselines: a production build's `core` embeds `gitCommitHash` through BuildInfo. |
+| L8 | local only | **Disproven.** With `target/` intact, as `zipx-sbt-setup` restores it, a hash-only commit recompiled one source in `lib` (the regenerated `BuildInfo.scala`) and nothing downstream: zinc sees no API change. A per-commit BuildInfo value costs one source per commit, not a rebuild of its dependents. |
 
 One run outside the scenario list: 36153908391 changed only `lab/`, which no module owns. `affected` was `[]`, and `test` still ran all 6 suites while `image-it` and `legacy` both ran.
 
