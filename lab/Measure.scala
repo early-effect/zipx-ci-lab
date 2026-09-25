@@ -61,15 +61,19 @@ final case class ApiRun(
     status: String,
     conclusion: Option[String],
     createdAt: Instant,
-    runStartedAt: Option[Instant],
 ) derives JsonDecoder
 
 @jsonMemberNames(SnakeCase)
 final case class ApiStep(name: String, conclusion: Option[String]) derives JsonDecoder
 
 @jsonMemberNames(SnakeCase)
-final case class ApiJob(id: Long, name: String, conclusion: Option[String], steps: List[ApiStep] = Nil)
-    derives JsonDecoder
+final case class ApiJob(
+    id: Long,
+    name: String,
+    conclusion: Option[String],
+    createdAt: Instant,
+    steps: List[ApiStep] = Nil,
+) derives JsonDecoder
 
 @jsonMemberNames(SnakeCase)
 final case class ApiJobs(totalCount: Int, jobs: List[ApiJob]) derives JsonDecoder
@@ -89,6 +93,7 @@ final case class LogFacts(
     compiled: List[String],
     metaBuildCompiled: Boolean,
     suites: List[String],
+    printedModules: Option[List[String]],
 )
 
 object LogFacts:
@@ -118,6 +123,11 @@ object LogFacts:
       compiled = compiles.collect { case (m, dir) if !m.endsWith("-build") => target(m, dir) }.distinct.sorted,
       metaBuildCompiled = compiles.exists((m, _) => m.endsWith("-build")),
       suites = lines.collect { case Suite(label) => label.trim }.distinct.sorted,
+      // The `affected` job echoes its module set as one JSON array line: `["svcA","svcAJS"]`, `["all"]`, or `[]`.
+      printedModules = lines.iterator
+        .filter(l => l == "[]" || l.startsWith("[\""))
+        .flatMap(_.fromJson[List[String]].toOption)
+        .nextOption(),
     )
   end from
 end LogFacts
@@ -146,6 +156,7 @@ final case class RunReport(
     sha: String,
     conclusion: Option[String],
     pendingSeconds: Long,
+    affected: Option[List[String]],
     jobsRan: List[String],
     jobsWorked: List[String],
     cacheSaves: Int,
@@ -220,9 +231,10 @@ object Report:
         page   <- gh.json[ApiJobs](s"actions/runs/${run.value}/jobs?per_page=100&filter=latest")
         _      <- ZIO.fail(MeasureError.TooManyJobs(page.totalCount)).when(page.totalCount > page.jobs.size)
         ran = page.jobs.filter(Jobs.ran)
-        jobs <- ZIO
-          .foreachPar(ran)(job => gh.jobLog(job.id).map(log => Jobs.report(job, LogFacts.from(log))))
+        facts <- ZIO
+          .foreachPar(ran)(job => gh.jobLog(job.id).map(log => job -> LogFacts.from(log)))
           .withParallelism(8)
+        jobs = facts.map((job, fact) => Jobs.report(job, fact))
         caches <- gh.json[ApiCaches]("actions/caches?per_page=100")
       yield RunReport(
         runId = apiRun.id,
@@ -230,8 +242,12 @@ object Report:
         branch = apiRun.headBranch,
         sha = apiRun.headSha,
         conclusion = apiRun.conclusion,
-        pendingSeconds =
-          apiRun.runStartedAt.fold(0L)(started => JDuration.between(apiRun.createdAt, started).toSeconds),
+        // A run held by its concurrency group has `run_started_at` set already; its jobs appear when it is released.
+        pendingSeconds = page.jobs
+          .map(_.createdAt)
+          .minOption
+          .fold(0L)(firstJob => JDuration.between(apiRun.createdAt, firstJob).toSeconds),
+        affected = facts.collectFirst { case (job, fact) if job.name == "affected" => fact.printedModules }.flatten,
         jobsRan = jobs.map(_.name),
         jobsWorked = jobs.filter(_.didWork).map(_.name),
         cacheSaves = jobs.map(_.savedKeys.size).sum,
