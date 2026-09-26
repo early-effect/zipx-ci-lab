@@ -4,13 +4,21 @@ import zipx.workflow.{Expr, Step}
 
 import scala.collection.immutable.ListMap
 
-/** Deploy tiers. `lab-prd` requires a reviewer, `lab-stg` is open. */
-enum LabTier(val target: TargetName, val environment: String, val tier: String):
-  case Stg extends LabTier(TargetName("stg"), "lab-stg", "stg")
-  case Prd extends LabTier(TargetName("prd"), "lab-prd", "prd")
+/** Deploy tiers. `lab-prd` requires a reviewer and deploys only from `main`; `lab-stg` is open. */
+enum LabTier(val target: TargetName, val environment: String, val tier: String, val stage: DeployStage):
+  case Stg extends LabTier(TargetName("stg"), "lab-stg", "stg", DeployStage.PreProduction)
+  case Prd extends LabTier(TargetName("prd"), "lab-prd", "prd", DeployStage.Production)
 
+  /** `staging` names `stg` a second way, so two dispatches can reach one Environment through different choices. */
   def toTarget: Target =
-    Target(name = target, environment = Some(environment), env = Map("TIER" -> EnvValue.plain(tier)))
+    Target(
+      name = target,
+      environment = Some(environment),
+      env = Map("TIER" -> EnvValue.plain(tier)),
+      group = Option.when(stage == DeployStage.PreProduction)(TargetGroup("staging")),
+      stage = stage,
+    )
+end LabTier
 
 object LabTier:
   val targets: List[Target] = values.toList.map(_.toTarget)

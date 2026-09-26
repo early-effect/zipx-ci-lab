@@ -145,8 +145,9 @@ zipxAffectedOnPush   := true
 zipxAffectedPublish  := true
 zipxAffectedDeploy   := true
 zipxVersionUpdates   := false
-// Images and deploys run from a dispatched zipx-deploy.yml, never on a merge.
-zipxDeployTrigger := DeployTrigger.Manual()
+// Images and deploys run from zipx-deploy.yml: staging on every merge and on PRs labeled deploy-stg, production only
+// from a dispatch on main.
+zipxDeployTrigger := DeployTrigger.staged(deployLabel = "deploy-stg", skipLabel = "no-deploy")
 // Package publish and the modver registry lookup both read GITHUB_TOKEN.
 zipxEnv += ("GITHUB_TOKEN" -> EnvValue.githubToken)
 
@@ -185,6 +186,8 @@ zipxCapabilities += Capability
     gate = Gate.Always,
     needsCapabilities = List(Capability.DockerName),
     permissions = Map("contents" -> "read"),
+    // A service catalog hears only about main's images, never a labeled PR's.
+    condition = Some(JobCondition.refIs("refs/heads/main")),
   )
   .copy(
     scope = CapabilityScope.Graph,
