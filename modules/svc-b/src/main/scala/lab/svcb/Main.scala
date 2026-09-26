@@ -10,7 +10,7 @@ object Styled:
 object Main extends ZIOAppDefault:
   def run =
     ZIO
-      .fromEither(Name.make("svc-b"))
+      .fromEither(Name.make("svc-b-l8"))
       .flatMap(Styled.greeting)
       .flatMap(styled => Console.printLine(styled.render))
       .provide(Greeter.layer)
