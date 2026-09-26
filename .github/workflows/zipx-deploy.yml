@@ -74,8 +74,7 @@ jobs:
       - name: Resolve deploy plan
         id: plan
         run: |
-          sbt zipxDeployPlan
-          printf '%s\n' "sha=$(cat target/zipx-deploy/sha)" "images=$(cat target/zipx-deploy/images.json)" "targets=$(cat target/zipx-deploy/targets.json)" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "sha=$GITHUB_SHA" 'images=[]' 'targets={"prd":["workerA"]}' >> "$GITHUB_OUTPUT"
         env:
           ZIPX_DEPLOY_MODULES: ${{ inputs.modules }}
           ZIPX_DEPLOY_REQUESTED_SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
