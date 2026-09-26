@@ -135,9 +135,8 @@ lazy val root = (project in file("."))
   )
 
 // --- zipx --------------------------------------------------------------------
-// Mirrors a production monorepo's configuration on purpose, pathologies included: images and deploys on every merge
-// to main, Once Verify jobs with no affected gate. Coverage as the required `test` was the 0.11.0 baseline; zipx now
-// refuses it.
+// Mirrors a production monorepo's configuration on purpose, pathologies included: Once Verify jobs with no affected
+// gate. Coverage as the required `test` and images and deploys on every merge were the 0.11.0 baseline (L2, L3).
 
 zipxJavaVersion      := JdkVersion("25")
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
@@ -146,6 +145,8 @@ zipxAffectedOnPush   := true
 zipxAffectedPublish  := true
 zipxAffectedDeploy   := true
 zipxVersionUpdates   := false
+// Images and deploys run from a dispatched zipx-deploy.yml, never on a merge.
+zipxDeployTrigger := DeployTrigger.Manual()
 // Package publish and the modver registry lookup both read GITHUB_TOKEN.
 zipxEnv += ("GITHUB_TOKEN" -> EnvValue.githubToken)
 
@@ -175,7 +176,6 @@ zipxCapabilities += Capability.dockerGraph
     permissions = Map("contents" -> "read", "packages" -> "write"),
     extraSteps = LabDeploy.ghcrLogin,
   )
-  .withCondition(onMainPush)
 
 zipxCapabilities += Capability
   .steps(
@@ -185,7 +185,6 @@ zipxCapabilities += Capability
     gate = Gate.Always,
     needsCapabilities = List(Capability.DockerName),
     permissions = Map("contents" -> "read"),
-    condition = Some(onMainPush),
   )
   .copy(
     scope = CapabilityScope.Graph,
@@ -226,5 +225,4 @@ zipxCapabilities += zipxTasks.deployGraph(
   needsCapabilities = List(Capability.DockerName),
   permissions = Map("contents" -> "read"),
   gate = Gate.Always,
-  condition = Some(onMainPush),
 )

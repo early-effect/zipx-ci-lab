@@ -42,7 +42,7 @@ object LabDeploy:
       Step
         .run(Script(Exec("echo", Word.lit("registered"), Word.vq("LAB_IMAGE"))))
         .named("Register image")
-        .withEnvs(Map("LAB_IMAGE" -> s"${LabImages.repository(image)}:main-${Expr.github("sha").render}"))
+        .withEnvs(Map("LAB_IMAGE" -> s"${LabImages.repository(image)}:main-${Expr.env("ZIPX_DEPLOY_SHA").render}"))
         .build
     }
   }
