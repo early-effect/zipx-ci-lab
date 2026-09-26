@@ -15,8 +15,9 @@ publish / skip := true
 val labPackages = "GitHub Package Registry" at "https://maven.pkg.github.com/early-effect/zipx-ci-lab"
 
 def publishedLibrary: Seq[Setting[?]] = Seq(
-  publish / skip := false,
-  publishTo      := Some(labPackages),
+  publish / skip       := false,
+  publishTo            := Some(labPackages),
+  pomIncludeRepository := (_ => false),
   credentials ++= sys.env
     .get("GITHUB_TOKEN")
     .map(Credentials("GitHub Package Registry", "maven.pkg.github.com", "_", _)),
