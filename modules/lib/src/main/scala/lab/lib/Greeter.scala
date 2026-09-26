@@ -4,7 +4,7 @@ import lab.models.Name
 import zio.*
 
 final case class Greeter(salutation: String):
-  def greet(name: Name): UIO[String] = ZIO.succeed(s"$salutation, ${name.value}")
+  def greet(name: Name): UIO[String] = ZIO.succeed(List(salutation, name.value).mkString(", "))
 
 object Greeter:
   val layer: ULayer[Greeter] = ZLayer.succeed(Greeter("hello"))
