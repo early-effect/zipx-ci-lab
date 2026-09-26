@@ -10,4 +10,4 @@ object Batch:
 
 object Main extends ZIOAppDefault:
   def run =
-    Batch.greetAll(List("ada", "joan")).flatMap(ZIO.foreachDiscard(_)(Console.printLine(_))).provide(Greeter.layer)
+    Batch.greetAll(List("ada", "grace")).flatMap(ZIO.foreachDiscard(_)(Console.printLine(_))).provide(Greeter.layer)
