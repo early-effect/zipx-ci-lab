@@ -203,19 +203,24 @@ zipxCapabilities += zipxTasks
   )
   .withPostSteps(LabChecks.uninstrumented)
 
-zipxCapabilities += zipxTasks.once(
-  name = CapabilityName("image-it"),
-  command = imageIt / testFull,
-  phase = Phase.Verify,
-  gate = Gate.Always,
-)
+// imageIt tests the images Docker/publishLocal builds, an edge the classpath graph cannot see.
+zipxCapabilities += zipxTasks
+  .once(
+    name = CapabilityName("image-it"),
+    command = imageIt / testFull,
+    phase = Phase.Verify,
+    gate = Gate.Always,
+  )
+  .withAffectedBy(n => LabImages.All.contains(n.id) || n.id == "imageIt")
 
-zipxCapabilities += Capability.once(
-  name = CapabilityName("legacy"),
-  command = SbtCommand.underScalaVersion(Expr.lit("2.13.18"), zipxTasks.of(legacy / testFull)),
-  phase = Phase.Verify,
-  gate = Gate.Always,
-)
+zipxCapabilities += Capability
+  .once(
+    name = CapabilityName("legacy"),
+    command = SbtCommand.underScalaVersion(Expr.lit("2.13.18"), zipxTasks.of(legacy / testFull)),
+    phase = Phase.Verify,
+    gate = Gate.Always,
+  )
+  .withAffectedBy(_.id == "legacy")
 
 zipxCapabilities += zipxTasks.deployGraph(
   participates = n => LabImages.Workers.contains(n.id),
