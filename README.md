@@ -1,8 +1,8 @@
 # zipx-ci-lab
 
-A proving ground for [zipx](https://github.com/early-effect/zipx) CI claims. Each claim about affected gating, LocalDir
-cache reuse, manual deploys, or coverage isolation is reproduced here on the released sbt-zipx first, then shown fixed
-on a snapshot of the zipx branch that changes it. Results are numbers from `lab/Measure.scala`, not screenshots.
+A proving ground for [zipx](https://github.com/early-effect/zipx) CI claims. The build pins the current sbt-zipx
+snapshot, so affected gating, LocalDir cache reuse, manual deploys, and coverage isolation are measured against what
+main publishes, not the last Central release. Results are numbers from `lab/Measure.scala`, not screenshots.
 
 ## The build
 
@@ -22,7 +22,7 @@ that make gating ineffective in a real monorepo:
 | `Coverage.once(name = test)` (0.11.0 baseline) | Coverage is the required `test` job, runs over the whole build, and saves its instrumented snapshot under the shared cache prefix. The lab now uses `Coverage.workflow` (L2). |
 | `docker`, `registry`, `deploy-workers` on every push to `main` (0.11.0 baseline) | Every merge builds and pushes images and deploys to `lab-stg` and `lab-prd`. The lab now dispatches them from `zipx-deploy.yml` (L3, L4). |
 | `lab-prd` requires a reviewer | Under the baseline, a waiting approval holds the `CI-refs/heads/main` concurrency group. |
-| `ShipGroup libs` (`models`, `lib`) | Library publish to this repo's GitHub Packages. Ship rows also turn off cancel-in-progress on `main`. |
+| `ShipGroup libs` (`models`, `lib`) | A main push publishes `<row>-SNAPSHOT` to this repo's GitHub Packages. A release is `zipx-release.yml`. Ship rows also turn off cancel-in-progress on `main`. |
 | `image-it`, `legacy` are Once jobs | They run on every PR regardless of what changed. |
 | Catalog in `project/ZipxVersions.scala` | Any change there forces `all`, even a row only `svcB` uses. |
 
@@ -55,8 +55,7 @@ version's directory when you replace it.
 
 `lab/publish` is a heddle server that speaks Maven and the Docker Registry HTTP API over TLS on the loopback interface.
 It keeps Maven bytes so a second process can resolve them, and keeps image manifests and digests while discarding blob
-bodies. `lab/proof` is a nested build on the current sbt-zipx snapshot. The scenarios above stay on the released plugin
-this repo already measures.
+bodies. `lab/proof` is a nested build on the same sbt-zipx snapshot the scenarios above pin.
 
 ```text
 scala-cli run lab/publish

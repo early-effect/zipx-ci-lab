@@ -51,6 +51,7 @@ jobs:
       deployments: read
       pull-requests: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
     outputs:
       sha: ${{ steps.plan.outputs.sha }}
@@ -97,6 +98,7 @@ jobs:
       contents: read
       packages: write
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
@@ -143,6 +145,7 @@ jobs:
       contents: read
       packages: write
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
@@ -189,6 +192,7 @@ jobs:
       contents: read
       packages: write
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
@@ -235,6 +239,7 @@ jobs:
       contents: read
       packages: write
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
@@ -277,6 +282,7 @@ jobs:
     permissions:
       contents: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
@@ -299,6 +305,7 @@ jobs:
     permissions:
       contents: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
     steps:
@@ -325,6 +332,7 @@ jobs:
     permissions:
       contents: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       TIER: prd
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
@@ -360,6 +368,7 @@ jobs:
     permissions:
       contents: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       TIER: stg
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
@@ -395,6 +404,7 @@ jobs:
     permissions:
       contents: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       TIER: prd
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
@@ -430,6 +440,7 @@ jobs:
     permissions:
       contents: read
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       TIER: stg
       ZIPX_DEPLOY_SHA: ${{ needs.resolve.outputs.sha }}
