@@ -18,8 +18,10 @@ object LabVersions extends ZipxVersions:
   val scoverage      = Plugin("org.scoverage", "sbt-scoverage", "2.4.4")
   val scalajs        = Plugin("org.scala-js", "sbt-scalajs", "1.22.0")
 
-  /** Published to the lab's GitHub Packages. Ship rows are also what keep zipx from cancelling runs on main. */
-  val libs = ShipGroup("libs", "0.1.0")("models", "lib")
+  /** Published to the lab's GitHub Packages. `0.1.0` is already there, so this row is the next number: a later change
+    * to `lib` or `models` is already past that release.
+    */
+  val libs = ShipGroup("libs", "0.1.1")("models", "lib")
 
   def jvmTests = library(zioTestSbt)
   def lib      = library(zio)
