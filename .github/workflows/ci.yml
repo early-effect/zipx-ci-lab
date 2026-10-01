@@ -77,7 +77,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: save
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: cache-rehydrate
         run: sbt 'Test/compile'
   affected:
@@ -105,7 +105,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: "off"
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: Compute affected modules
         id: compute
         run: |
@@ -149,7 +149,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: save
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: Pinned snapshots
         run: echo "::warning title=zipx snapshots::pinned snapshots (rocks.earlyeffect:sbt-zipx:0.17.0-SNAPSHOT)"
       - name: test
@@ -184,7 +184,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: fmt
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -217,7 +217,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: workflow-check
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -250,7 +250,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: advisories
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -269,6 +269,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      packages: read
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
@@ -287,7 +288,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: Fetch PR base SHA
         run: git fetch --no-tags origin "$ZIPX_MODVER_BASE_SHA"
       - name: modver-suggest
@@ -307,6 +308,7 @@ jobs:
     if: (!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))) && (github.event_name == 'pull_request')
     permissions:
       contents: read
+      packages: read
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
@@ -325,7 +327,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: Fetch PR base SHA
         run: git fetch --no-tags origin "$ZIPX_MODVER_BASE_SHA"
       - name: modver-check
@@ -371,7 +373,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: image
         if: (contains(fromJson(needs.affected.outputs.modules), matrix.module) || contains(fromJson(needs.affected.outputs.modules), 'all'))
         run: |
@@ -418,7 +420,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: image-it
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -452,7 +454,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: legacy
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -486,6 +488,6 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: snapshots
         run: sbt 'zipxSnapshotPublish'
