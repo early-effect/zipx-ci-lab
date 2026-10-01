@@ -1,8 +1,8 @@
 # zipx-ci-lab
 
-A proving ground for [zipx](https://github.com/early-effect/zipx) CI claims. Each claim about affected gating, LocalDir
-cache reuse, manual deploys, or coverage isolation is reproduced here on the released sbt-zipx first, then shown fixed
-on a snapshot of the zipx branch that changes it. Results are numbers from `lab/Measure.scala`, not screenshots.
+A proving ground for [zipx](https://github.com/early-effect/zipx) CI claims. The build pins the current sbt-zipx
+snapshot, so affected gating, LocalDir cache reuse, manual deploys, and coverage isolation are measured against what
+main publishes, not the last Central release. Results are numbers from `lab/Measure.scala`, not screenshots.
 
 ## The build
 
@@ -22,7 +22,7 @@ that make gating ineffective in a real monorepo:
 | `Coverage.once(name = test)` (0.11.0 baseline) | Coverage is the required `test` job, runs over the whole build, and saves its instrumented snapshot under the shared cache prefix. The lab now uses `Coverage.workflow` (L2). |
 | `docker`, `registry`, `deploy-workers` on every push to `main` (0.11.0 baseline) | Every merge builds and pushes images and deploys to `lab-stg` and `lab-prd`. The lab now dispatches them from `zipx-deploy.yml` (L3, L4). |
 | `lab-prd` requires a reviewer | Under the baseline, a waiting approval holds the `CI-refs/heads/main` concurrency group. |
-| `ShipGroup libs` (`models`, `lib`) | Library publish to this repo's GitHub Packages. Ship rows also turn off cancel-in-progress on `main`. |
+| `ShipGroup libs` (`models`, `lib`) | A main push publishes `<row>-SNAPSHOT` to this repo's GitHub Packages. A release is `zipx-release.yml`. Ship rows also turn off cancel-in-progress on `main`. |
 | `image-it`, `legacy` are Once jobs | They run on every PR regardless of what changed. |
 | Catalog in `project/ZipxVersions.scala` | Any change there forces `all`, even a row only `svcB` uses. |
 
@@ -50,6 +50,23 @@ sbt 'set ThisBuild / version := "<next>-<topic>-<sha8>"; set every publishTo := 
 
 Then set that version in `project/plugins.sbt`, run `sbt zipxWorkflowGenerate` here, and open a PR. Delete the old
 version's directory when you replace it.
+
+## Publish proof
+
+`lab/publish` is a heddle server that speaks Maven and the Docker Registry HTTP API over TLS on the loopback interface.
+It keeps Maven bytes so a second process can resolve them, and keeps image manifests and digests while discarding blob
+bodies. `lab/proof` is a nested build on the same sbt-zipx snapshot the scenarios above pin.
+
+```text
+scala-cli run lab/publish
+```
+
+The process prints one JSON report and exits non-zero when a coordinate is missing or extra. Maven traffic stays on
+`127.0.0.1`. Image pushes use `host.docker.internal`: a daemon treats `127.0.0.1` as an insecure HTTP registry, and a
+VM daemon's loopback is not this process. Colima gets the lab CA in its `/etc/docker/certs.d`. Docker Desktop still
+loads `~/.docker/certs.d` only after one restart.
+
+The `publish-proof` workflow runs that same command on demand.
 
 ## Scenarios
 

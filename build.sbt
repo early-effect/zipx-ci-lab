@@ -138,6 +138,7 @@ lazy val root = (project in file("."))
 // Mirrors a production monorepo's configuration on purpose, pathologies included: Once Verify jobs with no affected
 // gate. Coverage as the required `test` and images and deploys on every merge were the 0.11.0 baseline (L2, L3).
 
+zipxPluginVersion    := Some("0.17.0-SNAPSHOT")
 zipxJavaVersion      := JdkVersion("25")
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
 zipxWorkflowDispatch := true
@@ -151,7 +152,15 @@ zipxDeployTrigger := DeployTrigger.staged(deployLabel = "deploy-stg", skipLabel 
 // Package publish and the modver registry lookup both read GITHUB_TOKEN.
 zipxEnv += ("GITHUB_TOKEN" -> EnvValue.githubToken)
 
-val onMainPush = JobCondition.eventIs("push") && JobCondition.refIs("refs/heads/main")
+// Ship rows publish to this repo's GitHub Packages. A main push publishes `<row>-SNAPSHOT`. A release is
+// zipx-release.yml.
+zipxReleaseWorkflow := Some(
+  ZipxGitHubPackages.releases("early-effect", "zipx-ci-lab", token = EnvValue.githubToken)
+)
+// The plugin snapshot is on Central. Ship snapshots publish to this repo's Packages registry, which is already on the
+// resolver list because it is the release workflow.
+zipxSnapshotRegistries += ArtifactRegistry.MavenCentral
+zipxCapabilities += Capability.snapshots()
 
 // The builtin test owns the LocalDir build snapshot. Coverage runs in zipx-coverage.yml, restores that snapshot, and
 // never saves one.
@@ -162,14 +171,6 @@ zipxCoverageWorkflow := Some(
     CoverageTrigger.prLabel("coverage"),
   )
 )
-
-zipxCapabilities += ZipxModver
-  .publish(
-    command = zipxTasks.of(publish),
-    registry = ModverRegistry.GitHubPackages("early-effect", "zipx-ci-lab"),
-  )
-  .copy(permissions = ZipxGitHubPackages.packagesPermissions)
-  .andCondition(onMainPush)
 
 zipxCapabilities += Capability.dockerGraph
   .copy(

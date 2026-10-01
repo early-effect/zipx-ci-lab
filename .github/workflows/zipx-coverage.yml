@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'coverage') && (github.event.action != 'labeled' || github.event.label.name == 'coverage'))
     env:
+      COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,7 +37,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
-          cache-epoch: fd8132a86500a53a
+          cache-epoch: dbb740c11f3404c4
       - name: coverage
         run: sbt 'coverage; testFull; coverageAggregate'
       - name: Upload coverage report

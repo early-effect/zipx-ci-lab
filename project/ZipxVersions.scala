@@ -4,7 +4,7 @@ import zipx.*
   * catalog-aware affected gating (scenario L6).
   */
 object LabVersions extends ZipxVersions:
-  val sbt: SbtVersion      = SbtVersion("2.1.0-M2")
+  val sbt: SbtVersion      = SbtVersion("2.1.0-M3")
   val scala: ScalaVersion  = ScalaVersion("3.9.0")
   val scala2: ScalaVersion = ScalaVersion("2.13.18")
 
@@ -18,8 +18,10 @@ object LabVersions extends ZipxVersions:
   val scoverage      = Plugin("org.scoverage", "sbt-scoverage", "2.4.4")
   val scalajs        = Plugin("org.scala-js", "sbt-scalajs", "1.22.0")
 
-  /** Published to the lab's GitHub Packages. Ship rows are also what keep zipx from cancelling runs on main. */
-  val libs = ShipGroup("libs", "0.1.0")("models", "lib")
+  /** Published to the lab's GitHub Packages. `0.1.0` is already there, so this row is the next number: a later change
+    * to `lib` or `models` is already past that release.
+    */
+  val libs = ShipGroup("libs", "0.1.1")("models", "lib")
 
   def jvmTests = library(zioTestSbt)
   def lib      = library(zio)
