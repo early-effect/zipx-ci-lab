@@ -51,6 +51,24 @@ sbt 'set ThisBuild / version := "<next>-<topic>-<sha8>"; set every publishTo := 
 Then set that version in `project/plugins.sbt`, run `sbt zipxWorkflowGenerate` here, and open a PR. Delete the old
 version's directory when you replace it.
 
+## Publish proof
+
+`lab/publish` is a heddle server that speaks Maven and the Docker Registry HTTP API over TLS on the loopback interface.
+It keeps Maven bytes so a second process can resolve them, and keeps image manifests and digests while discarding blob
+bodies. `lab/proof` is a nested build on the current sbt-zipx snapshot. The scenarios above stay on the released plugin
+this repo already measures.
+
+```text
+scala-cli run lab/publish
+```
+
+The process prints one JSON report and exits non-zero when a coordinate is missing or extra. Maven traffic stays on
+`127.0.0.1`. Image pushes use `host.docker.internal`: a daemon treats `127.0.0.1` as an insecure HTTP registry, and a
+VM daemon's loopback is not this process. Colima gets the lab CA in its `/etc/docker/certs.d`. Docker Desktop still
+loads `~/.docker/certs.d` only after one restart.
+
+The `publish-proof` workflow runs that same command on demand.
+
 ## Scenarios
 
 Each baseline must fail as stated on sbt-zipx 0.11.0. A baseline that does not fail disproves its claim.

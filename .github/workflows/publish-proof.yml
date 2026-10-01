@@ -1,0 +1,26 @@
+name: publish-proof
+
+on:
+  workflow_dispatch:
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install scala-cli 1.17.1
+        run: |
+          set -euo pipefail
+          case "$(uname -m)" in
+            x86_64) arch=x86_64-pc-linux ;;
+            aarch64) arch=aarch64-pc-linux ;;
+            *) echo "unsupported architecture $(uname -m)" >&2; exit 1 ;;
+          esac
+          curl -fL -o /tmp/scala-cli.gz "https://github.com/VirtusLab/scala-cli/releases/download/v1.17.1/scala-cli-${arch}.gz"
+          gzip -d /tmp/scala-cli.gz
+          sudo install -m 755 /tmp/scala-cli /usr/local/bin/scala-cli
+          scala-cli version
+
+      - name: Prove publish
+        run: scala-cli run lab/publish
