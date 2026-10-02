@@ -20,6 +20,7 @@ object Scenarios:
       _ <- world.ledger.reset
       _ <- publishSnapshots(world, checks)
       _ <- publishLibs(world, checks)
+      _ <- shadowRefuses(world, checks)
       _ <- refusedRefs(world, checks)
       _ <- consumers(world, checks, "consumer-release", world.bound.maven.releases, "0.1.0", 8)
       _ <- consumers(world, checks, "consumer-snapshot", world.bound.maven.snapshots, "0.1.0-SNAPSHOT", 8)
@@ -115,6 +116,41 @@ object Scenarios:
         "basic-wires",
         facts.exists(f => f.repository == "releases" && f.auth == "basic:zipx" && f.method == "PUT" && f.status == 201),
         "release upload is Basic user zipx",
+      )
+    yield ()
+
+  /** After libs 0.1.0 is on the release repository, another snapshot of that number must not upload. The proof clone
+    * has no `libs/v0.1.0` tag, so the publish cannot prove the tree is clean. A missing token must fail the same way,
+    * before any PUT: an anonymous 401 is not "unreleased".
+    */
+  private def shadowRefuses(world: World, checks: Ref[List[Check]]): ZIO[Any, ProofError, Unit] =
+    for
+      before <- jarDigest(world, "snapshots", "lib_3")
+      ran    <- Machine.sbt(world.proof, List("zipxSnapshotPublish"), world.env("basic"))
+      after  <- jarDigest(world, "snapshots", "lib_3")
+      text = ran.tail
+      refused = ran.exit != 0 && text.contains("sbt zipxModverBump") &&
+        (text.contains("is not in this clone") || text.contains("shadowed"))
+      stable = before.isDefined && before == after
+      _ <- gate(
+        checks,
+        "shadow-refuses",
+        refused && stable,
+        if refused && stable then "released snapshot unchanged" else text,
+      )
+      putsBefore <- world.ledger.all
+      unset <- Machine.sbt(
+        world.proof,
+        List("zipxSnapshotPublish"),
+        world.env("basic"),
+        unset = List("ZIPX_PROOF_PASSWORD", "ZIPX_PROOF_TOKEN"),
+      )
+      putsAfter <- world.ledger.all
+      _ <- gate(
+        checks,
+        "shadow-no-credentials",
+        unset.exit != 0 && noNewCoordinates(putsBefore, putsAfter) && credentialFailure(unset.tail),
+        unset.tail,
       )
     yield ()
 
