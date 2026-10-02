@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 /** What the two `ZipxMaven` constructors put on the wire. Upload of a bearer registry is Basic with username `token`.
-  * The metadata GET is `Authorization: Bearer`.
+  * The metadata GET is `Authorization: Bearer`. L9 no-deploy marker.
   */
 final case class Credentials(user: String, password: String, token: String):
   def accept(header: Option[String]): Either[Response, String] =
