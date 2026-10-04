@@ -27,7 +27,9 @@ object PublishProof extends ZIOAppDefault:
   private def program(checks: Ref[List[Check]]): ZIO[Scope, ProofError, Report] =
     for
       located <- discover
-      (root, proof) = located
+      (root, source) = located
+      pluginRepo <- ZipxUnderTest.publish
+      proof <- ProofClone.prepare(source, pluginRepo)
       material <- Certs.generate
       tls <- ZIO
         .service[Tls]

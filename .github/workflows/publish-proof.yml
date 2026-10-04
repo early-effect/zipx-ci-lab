@@ -22,5 +22,13 @@ jobs:
           sudo install -m 755 /tmp/scala-cli /usr/local/bin/scala-cli
           scala-cli version
 
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: early-effect/zipx
+          ref: main
+          path: zipx
+
       - name: Prove publish
+        env:
+          ZIPX_UNDER_TEST: ${{ github.workspace }}/zipx
         run: scala-cli run lab/publish

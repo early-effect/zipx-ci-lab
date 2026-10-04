@@ -36,7 +36,9 @@ object Machine:
     lower.contains("viamodels=") || lower.contains("already released") || lower.contains("is not a tag") ||
       lower.contains("is not in the catalog") || lower.contains("no credentials") ||
       lower.contains("cannot tell whether") || lower.contains("http 401") || lower.contains("x509") ||
-      lower.contains("unknown authority")
+      lower.contains("unknown authority") || lower.contains("zipxsnapshotstatus") ||
+      lower.contains("zipxsnapshotpublish local") || lower.contains("not on the release repository") ||
+      lower.contains("all refuses") || lower.contains("changing=")
 
   def tailOf(text: String, n: Int = 40): String =
     val lines = text.split('\n').toList

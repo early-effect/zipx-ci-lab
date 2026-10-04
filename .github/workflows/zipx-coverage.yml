@@ -37,6 +37,7 @@ jobs:
           node-version: ""
           sbt-disk-cache: "false"
           cache-mode: restore
+          purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
       - name: coverage
         run: sbt 'coverage; testFull; coverageAggregate'
