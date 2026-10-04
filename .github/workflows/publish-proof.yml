@@ -31,4 +31,4 @@ jobs:
       - name: Prove publish
         env:
           ZIPX_UNDER_TEST: ${{ github.workspace }}/zipx
-        run: scala-cli --server=false run lab/publish
+        run: scala-cli run --server=false lab/publish
