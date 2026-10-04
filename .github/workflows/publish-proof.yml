@@ -28,6 +28,16 @@ jobs:
           ref: main
           path: zipx
 
+      - name: zipx sbt setup
+        uses: ./.github/actions/zipx-sbt-setup
+        with:
+          java-version: "25"
+          runner-os: ubuntu-latest
+          cache-key-suffix: publish-proof
+          sbt-disk-cache: "false"
+          cache-mode: "off"
+          purge: "false"
+
       - name: Prove publish
         env:
           ZIPX_UNDER_TEST: ${{ github.workspace }}/zipx
