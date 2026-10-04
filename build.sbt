@@ -164,6 +164,10 @@ zipxCapabilities += Capability.snapshots()
 
 // The builtin test owns the LocalDir build snapshot. Coverage runs in zipx-coverage.yml, restores that snapshot, and
 // never saves one.
+// publish-proof.yml: checkout and sbt come from zipxShellWorkflows. The steps install scala-cli, check out zipx,
+// and run the loopback proof.
+zipxShellWorkflows += PublishProof.workflow
+
 zipxCoverageWorkflow := Some(
   Coverage.workflow(
     CoverageTrigger.Scheduled(Cron.daily(hour = 3)),
