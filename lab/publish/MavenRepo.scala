@@ -58,6 +58,9 @@ object MavenRepo:
               200,
             ).as(served(stored, method == Method.HEAD))
         }
+      case Method.PUT if repo == "snapshots" && !snapshotCoordinate(path) =>
+        note(ledger, authority, repo, "PUT", path, Some(Ledger.sha256(body)), body.length.toLong, auth, 400)
+          .as(Response.badRequest(s"$path is not a snapshot coordinate"))
       case Method.PUT =>
         val digest    = Ledger.sha256(body)
         val immutable = repo == "releases" && !metadata(path)
@@ -128,10 +131,24 @@ object MavenRepo:
           case _        => Ledger.md5(artifact)
         Option.when(got != expect)(s"$path $algorithm was $got, artifact is $expect")
 
+  /** A two-URL registry stores `<line>-<sha>` and the pointer `<line>-SNAPSHOT`. A release number is neither. */
+  private val CommitId = """\d+\.\d+\.\d+-[0-9a-f]{12}""".r
+
+  private def snapshotCoordinate(path: String): Boolean =
+    val parts = path.split('/').toList.filter(_.nonEmpty)
+    parts match
+      case _ :+ version :+ name =>
+        metadataName(name) || version.endsWith("-SNAPSHOT") || CommitId.matches(version)
+      case _ :+ name =>
+        metadataName(name)
+      case _ =>
+        false
+
+  private def metadataName(name: String): Boolean =
+    name == "maven-metadata.xml" || name.startsWith("maven-metadata.xml.")
+
   private def metadata(path: String): Boolean =
-    path.split('/').lastOption match
-      case Some(name) => name == "maven-metadata.xml" || name.startsWith("maven-metadata.xml.")
-      case None       => false
+    path.split('/').lastOption.exists(metadataName)
 
   private def algorithmOf(path: String): Option[String] =
     if path.endsWith(".sha1") then Some("sha1")

@@ -18,17 +18,30 @@ object Scenarios:
     for
       _ <- credentials(world, checks)
       _ <- world.ledger.reset
+      _ <- SnapshotId.compileAndDirty(world, checks)
       _ <- publishSnapshots(world, checks)
+      first <- ProofClone.head(world.proof)
+      _ <- SnapshotId.shaAndPointer(world, checks, first)
+      _ <- SnapshotId.immutableAndPointer(world, checks, first.take(12))
+      _ <- SnapshotId.plainReleaseRejected(world, checks)
+      _ <- SnapshotId.ivyDoesNotWin(world, checks, first.take(12))
+      _ <- republishLib(world, checks, lib)
+      second <- ProofClone.head(world.proof)
+      _ <- SnapshotId.newer(world, checks, first, second)
+      _ <- SnapshotId.pullRequest(world, checks, first, second)
+      _ <- ProofClone.resetHard(world.proof)
+      _ <- SnapshotId.releaseOrder(world, checks, first.take(12), released = false)
       _ <- publishLibs(world, checks)
+      _ <- SnapshotId.releaseOrder(world, checks, first.take(12), released = true)
       _ <- shadowRefuses(world, checks)
       _ <- refusedRefs(world, checks)
-      _ <- consumers(world, checks, "consumer-release", world.bound.maven.releases, "0.1.0", 8)
-      _ <- consumers(world, checks, "consumer-snapshot", world.bound.maven.snapshots, "0.1.0-SNAPSHOT", 8)
+      _ <- consumers(world, checks, "consumer-release", world.bound.maven.releases, "0.1.0", 9)
+      _ <- consumers(world, checks, "consumer-snapshot", world.bound.maven.snapshots, s"0.1.0-${first.take(12)}", 8)
       models <- jarDigest(world, "snapshots", "models_3")
       release <- jarDigest(world, "releases", "lib_3")
-      _ <- republishLib(world, checks, lib)
-      _ <- consumers(world, checks, "consumer-snapshot-replaced", world.bound.maven.snapshots, "0.1.0-SNAPSHOT", 9)
-      _ <- consumers(world, checks, "consumer-release-stable", world.bound.maven.releases, "0.1.0", 8)
+      _ <- consumers(world, checks, "consumer-snapshot-replaced", world.bound.maven.snapshots, s"0.1.0-${first.take(12)}", 8)
+      _ <- consumers(world, checks, "consumer-snapshot-new-sha", world.bound.maven.snapshots, s"0.1.0-${second.take(12)}", 9)
+      _ <- consumers(world, checks, "consumer-release-stable", world.bound.maven.releases, "0.1.0", 9)
       modelsAfter <- jarDigest(world, "snapshots", "models_3")
       _ <- gate(
         checks,
@@ -174,15 +187,17 @@ object Scenarios:
     ZIO.acquireReleaseWith(rewrite(lib))(original => ZIO.attemptBlocking(Files.writeString(lib, original)).orDie) { _ =>
       for
         before <- jarDigest(world, "snapshots", "lib_3")
-        ran <- Machine.sbt(world.proof, List("-Dzipx.session=snapshot", "lib/publish"), world.env("basic"))
-        after <- jarDigest(world, "snapshots", "lib_3")
-        moved = ran.exit == 0 && before.isDefined && after.isDefined && before != after
+        _ <- ProofClone.commitAll(world.proof, "change lib")
+        ran <- Machine.sbt(world.proof, List("zipxSnapshotPublish"), world.env("basic"))
+        keys <- world.ledger.fileKeys
+        digests <- ZIO.foreach(libJars(keys))(key => world.ledger.file(key).map(_.map(Ledger.sha256)))
+        moved = ran.exit == 0 && before.isDefined && digests.flatten.exists(digest => !before.contains(digest))
         _ <- gate(
           checks,
           "snapshot-selective",
           moved,
-          if moved then s"${before.getOrElse("missing")} -> ${after.getOrElse("missing")}"
-          else s"exit ${ran.exit} before ${before.getOrElse("missing")} after ${after.getOrElse("missing")}\n${ran.tail}",
+          if moved then s"new lib bytes besides ${before.getOrElse("missing")}"
+          else s"exit ${ran.exit} before ${before.getOrElse("missing")} digests ${digests.flatten.mkString(",")}\n${ran.tail}",
         )
       yield ()
     }
@@ -357,6 +372,9 @@ object Scenarios:
 
   private def blobUploads(facts: Chunk[Fact]): Int =
     facts.count(f => f.path.contains("/blobs/uploads/") && f.status == 201 && (f.method == "PUT" || f.method == "POST"))
+
+  private def libJars(keys: List[String]): List[String] =
+    mainJars(keys, "snapshots").filter(_.contains("/lib_3/"))
 
   private def mainJars(keys: List[String], repo: String): List[String] =
     keys.filter { key =>
