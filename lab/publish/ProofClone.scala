@@ -7,18 +7,19 @@ import scala.jdk.CollectionConverters.*
 
 /** A throwaway git clone of `lab/proof`. The lab checkout's HEAD is not the sha under test. */
 object ProofClone:
-  def prepare(source: Path, pluginRepo: Path): IO[ProofError, Path] =
+  private val ZipxPin = """addSbtPlugin("rocks.earlyeffect" % "sbt-zipx" % """
+
+  /** The proof's `plugins.sbt` with its sbt-zipx line pinned at the build under test, resolved from that build's repo. */
+  def prepare(source: Path, plugin: PluginUnderTest): IO[ProofError, Path] =
     ZIO.attemptBlocking {
       val dest = Files.createTempDirectory("zipx-proof-clone")
       copy(source, dest)
       val plugins = dest.resolve("project/plugins.sbt")
-      val text    = Files.readString(plugins)
-      if !text.contains("\"0.17.0-SNAPSHOT\"") then
-        throw new RuntimeException(s"$plugins does not pin sbt-zipx 0.17.0-SNAPSHOT")
+      val lines   = Files.readAllLines(plugins).asScala.toList
+      if !lines.exists(_.startsWith(ZipxPin)) then throw new RuntimeException(s"$plugins does not pin sbt-zipx")
+      val pinned = lines.map(line => if line.startsWith(ZipxPin) then s"""$ZipxPin"${plugin.version}")""" else line)
       val rewritten =
-        s"""resolvers += "zipx-under-test" at "${pluginRepo.toAbsolutePath.toUri}"
-           |${text.replace("0.17.0-SNAPSHOT", "0.17.0-ci")}
-           |""".stripMargin
+        (s"""resolvers += "zipx-under-test" at "${plugin.repo.toAbsolutePath.toUri}"""" :: pinned).mkString("", "\n", "\n")
       Files.writeString(plugins, rewritten)
       Files.writeString(
         dest.resolve(".gitignore"),

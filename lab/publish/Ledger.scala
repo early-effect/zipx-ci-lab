@@ -43,13 +43,6 @@ final class Ledger(facts: Ref[Chunk[Fact]], files: Ref[Map[String, Chunk[Byte]]]
 
   def fileKeys: UIO[List[String]] = files.get.map(_.keys.toList.sorted)
 
-  /** Drops every stored body whose key contains `needle`. Used to prove a later resolve does not need metadata. */
-  def deleteContaining(needle: String): UIO[Int] =
-    files.modify { map =>
-      val gone = map.keys.filter(_.contains(needle)).toList
-      (gone.length, gone.foldLeft(map)((acc, key) => acc.removed(key)))
-    }
-
   /** `None` when a release path is already stored. Snapshots and metadata replace. */
   def putFile(key: String, body: Chunk[Byte], immutable: Boolean): UIO[Option[Chunk[Byte]]] =
     files.modify { map =>
