@@ -28,8 +28,8 @@ object PublishProof extends ZIOAppDefault:
     for
       located <- discover
       (root, source) = located
-      pluginRepo <- ZipxUnderTest.publish
-      proof <- ProofClone.prepare(source, pluginRepo)
+      plugin <- ZipxUnderTest.publish
+      proof <- ProofClone.prepare(source, plugin)
       material <- Certs.generate
       tls <- ZIO
         .service[Tls]

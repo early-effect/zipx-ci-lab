@@ -12,6 +12,12 @@ import scala.jdk.CollectionConverters.*
 object SnapshotId:
   private val Line = "0.1.0"
 
+  /** A commit pin as every registry stores it, and as a catalog names it. */
+  def stored(abbrev: String): String = s"$Line-$abbrev-SNAPSHOT"
+
+  /** The line's pointer: a coordinate status and advance read, never a dependency. */
+  private val Pointer = s"$Line-SNAPSHOT"
+
   def compileAndDirty(world: World, checks: Ref[List[Check]]): ZIO[Any, ProofError, Unit] =
     val proof = world.proof
     for
@@ -56,13 +62,14 @@ object SnapshotId:
   def publishedSha(world: World, artifact: String): UIO[Option[String]] =
     world.ledger.fileKeys.map { keys =>
       keys.collectFirst {
-        case key if key.contains(s"/$artifact/") && commitDir.matches(versionOf(key)) => versionOf(key).stripPrefix(s"$Line-")
+        case key if key.contains(s"/$artifact/") && commitDir.matches(versionOf(key)) =>
+          versionOf(key).stripPrefix(s"$Line-").stripSuffix("-SNAPSHOT")
       }
     }
 
   def pointerNames(world: World, artifact: String, fullSha: String): UIO[Boolean] =
     world.ledger.fileKeys.flatMap { keys =>
-      val poms = keys.filter(key => key.contains(s"/$artifact/$Line-SNAPSHOT/") && key.endsWith(".pom"))
+      val poms = keys.filter(key => key.contains(s"/$artifact/$Pointer/") && key.endsWith(".pom"))
       val unique = poms.filter(_.matches(""".*\d{8}\.\d{6}-\d+\.pom"""))
       val chosen = if unique.nonEmpty then Some(unique.max) else poms.maxOption
       chosen match
@@ -79,7 +86,7 @@ object SnapshotId:
       keys <- world.ledger.fileKeys
       snaps = keys.filter(_.startsWith("snapshots/"))
       releases = keys.filter(_.startsWith("releases/"))
-      hasSha = snaps.exists(key => versionOf(key) == s"$Line-$abbrev")
+      hasSha = snaps.exists(key => versionOf(key) == stored(abbrev))
       _ <- gate(checks, "ci-sha-published", hasSha && releases.isEmpty, snaps.filter(_.endsWith(".jar")).mkString(", "))
       named <- pointerNames(world, "lib_3", full)
       _ <- gate(checks, "pointer-names-sha", named, s"pointer POM names $full")
@@ -90,8 +97,11 @@ object SnapshotId:
       _ <- gate(checks, "republish-same-commit", again.exit == 0 && after == before, after.mkString(", "))
     yield ()
 
+  /** The stored form is a Maven snapshot version, so a fresh resolver reads its metadata to find the unique jar. What
+    * stays fixed is the build: the pin is not changing, and every resolve gets the commit's bytes.
+    */
   def immutableAndPointer(world: World, checks: Ref[List[Check]], abbrev: String): ZIO[Client, ProofError, Unit] =
-    val version = s"$Line-$abbrev"
+    val version = stored(abbrev)
     for
       first <- consumerRun(world, version)
       _ <- gate(
@@ -100,19 +110,14 @@ object SnapshotId:
         first.exit == 0 && first.tail.contains("viaModels=8") && first.tail.contains("changing=false"),
         first.tail,
       )
-      getsBefore <- world.ledger.all
-      _ <- world.ledger.deleteContaining("maven-metadata.xml")
       _ <- consumers(world, checks, "immutable-resolve-again", version, 8)
-      getsAfter <- world.ledger.all
-      metadataGets = getsAfter.drop(getsBefore.length).exists(f => f.method == "GET" && f.path.contains("maven-metadata.xml"))
-      _ <- gate(checks, "immutable-no-metadata", !metadataGets, "second resolve did not GET maven-metadata.xml")
       refused <- pointerUpdate(world)
       _ <- gate(checks, "pointer-not-a-dependency", refused.exit != 0 && refused.tail.contains("zipxSnapshotStatus"), refused.tail)
     yield ()
 
   def releaseOrder(world: World, checks: Ref[List[Check]], abbrev: String, released: Boolean): ZIO[Any, ProofError, Unit] =
     ZIO.scoped {
-      ZIO.acquireRelease(downstream(world, abbrev))(dir => ZIO.attemptBlocking(delete(dir)).ignore).flatMap { dir =>
+      ZIO.acquireRelease(downstream(world, stored(abbrev)))(dir => ZIO.attemptBlocking(delete(dir)).ignore).flatMap { dir =>
         for
           plan <- Machine.sbt(dir, List("zipxReleasePlan"), world.env("basic"))
           pin <- Machine.sbt(dir, List("zipxPinRelease", "lib"), world.env("basic"))
@@ -122,7 +127,7 @@ object SnapshotId:
               gate(
                 checks,
                 "release-plan-blocked",
-                plan.exit == 0 && plan.tail.contains(s"$Line-$abbrev") && plan.tail.contains("all refuses"),
+                plan.exit == 0 && plan.tail.contains(stored(abbrev)) && plan.tail.contains("all refuses"),
                 plan.tail,
               ) *> gate(
                 checks,
@@ -152,14 +157,14 @@ object SnapshotId:
           ran <- Machine.sbt(dir, List("zipxSnapshotPublish", "pr", "7"), world.env("basic"))
           named <- pointerNames(world, "lib_3", pointer)
           keys <- world.ledger.fileKeys
-          uploaded = keys.exists(key => versionOf(key) == s"$Line-${first.take(12)}")
+          uploaded = keys.exists(key => versionOf(key) == stored(first.take(12)))
           _ <- gate(checks, "pr-does-not-move-pointer", ran.exit == 0 && uploaded && named, ran.tail)
         yield ()
       }
     }
 
   def ivyDoesNotWin(world: World, checks: Ref[List[Check]], abbrev: String): ZIO[Any, ProofError, Unit] =
-    val version = s"$Line-$abbrev"
+    val version = stored(abbrev)
     for
       loopback <- jarDigest(world, "snapshots", "lib_3", version)
       ivy <- ZIO.attemptBlocking(Files.createTempDirectory("zipx-proof-ivy-ci")).mapError(boom("ivy-does-not-win", _))
@@ -185,7 +190,7 @@ object SnapshotId:
 
   private val extra = "\n// dirty local edit\n"
 
-  private val commitDir = """\d+\.\d+\.\d+-[0-9a-f]{12}""".r
+  private val commitDir = """\d+\.\d+\.\d+-[0-9a-f]{12}-SNAPSHOT""".r
 
   private def truthy(tail: String): Boolean = tail.contains("true")
   private def falsy(tail: String): Boolean = tail.contains("false")
@@ -208,7 +213,7 @@ object SnapshotId:
 
   def newer(world: World, checks: Ref[List[Check]], previous: String, latest: String): ZIO[Any, ProofError, Unit] =
     ZIO.scoped {
-      ZIO.acquireRelease(downstream(world, previous.take(12)))(dir => ZIO.attemptBlocking(delete(dir)).ignore).flatMap { dir =>
+      ZIO.acquireRelease(downstream(world, stored(previous.take(12))))(dir => ZIO.attemptBlocking(delete(dir)).ignore).flatMap { dir =>
         val versions = dir.resolve("project/ZipxVersions.scala")
         for
           status <- Machine.sbt(dir, List("zipxSnapshotStatus", "lib"), world.env("basic"))
@@ -227,15 +232,17 @@ object SnapshotId:
             advanced.exit == 0 && after.contains(latest.take(12)) && !after.contains(previous.take(12)),
             after,
           )
-          ran <- consumerRun(world, s"$Line-${latest.take(12)}")
+          ran <- consumerRun(world, stored(latest.take(12)))
           _ <- gate(checks, "resolve-advanced-sha", ran.exit == 0 && ran.tail.contains("viaModels=9"), ran.tail)
+          old <- consumerRun(world, stored(previous.take(12)))
+          _ <- gate(checks, "old-pin-unchanged", old.exit == 0 && old.tail.contains("viaModels=8"), old.tail)
         yield ()
       }
     }
 
   private def pointerUpdate(world: World): IO[ProofError, Machine.Ran] =
     ZIO.scoped {
-      ZIO.acquireRelease(downstream(world, "SNAPSHOT"))(dir => ZIO.attemptBlocking(delete(dir)).ignore).flatMap { dir =>
+      ZIO.acquireRelease(downstream(world, Pointer))(dir => ZIO.attemptBlocking(delete(dir)).ignore).flatMap { dir =>
         Machine.sbt(dir, List("update"), world.env("basic"))
       }
     }
@@ -252,7 +259,8 @@ object SnapshotId:
         }
     }
 
-  private def downstream(world: World, abbrev: String): IO[ProofError, Path] =
+  /** A downstream build whose catalog pins the proof's `lib` at `upstream`. */
+  private def downstream(world: World, upstream: String): IO[ProofError, Path] =
     ZIO.attemptBlocking {
       val dir = Files.createTempDirectory("zipx-proof-downstream")
       val plugins = Files.readString(world.proof.resolve("project/plugins.sbt"))
@@ -266,7 +274,7 @@ object SnapshotId:
            |object Downstream extends ZipxVersions:
            |  val sbt: SbtVersion = SbtVersion("2.1.0-M3")
            |  val scala: ScalaVersion = ScalaVersion("3.9.0")
-           |  val upstream = Lib("rocks.earlyeffect.lab", "lib", "$Line-$abbrev")
+           |  val upstream = Lib("rocks.earlyeffect.lab", "lib", "$upstream")
            |  val client = Ship("client", "0.2.0")
            |""".stripMargin,
       )

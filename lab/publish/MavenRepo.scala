@@ -131,14 +131,14 @@ object MavenRepo:
           case _        => Ledger.md5(artifact)
         Option.when(got != expect)(s"$path $algorithm was $got, artifact is $expect")
 
-  /** A two-URL registry stores `<line>-<sha>` and the pointer `<line>-SNAPSHOT`. A release number is neither. */
-  private val CommitId = """\d+\.\d+\.\d+-[0-9a-f]{12}""".r
-
+  /** A snapshot repository takes `-SNAPSHOT` versions, as Nexus and Artifactory do: a commit pin is
+    * `<line>-<sha>-SNAPSHOT` and the pointer is `<line>-SNAPSHOT`. A release number or a bare commit id is neither.
+    */
   private def snapshotCoordinate(path: String): Boolean =
     val parts = path.split('/').toList.filter(_.nonEmpty)
     parts match
       case _ :+ version :+ name =>
-        metadataName(name) || version.endsWith("-SNAPSHOT") || CommitId.matches(version)
+        metadataName(name) || version.endsWith("-SNAPSHOT")
       case _ :+ name =>
         metadataName(name)
       case _ =>
