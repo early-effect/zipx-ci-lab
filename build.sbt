@@ -1,3 +1,5 @@
+import zipx.specular.ZipxDocs
+
 // A small build shaped like the monorepos zipx has to gate well:
 //
 //   models (JVM + JS) ──▶ lib ──▶ svcA (JVM + JS, image) ┐
@@ -6,7 +8,7 @@
 //                          └───▶ workerB (image, deploy)┘
 //   legacy (Scala 2.13 only, not aggregated)
 //
-// The zipx block at the bottom is the configuration under test. See README.md for the scenarios.
+// The zipx block at the bottom is the configuration under test.
 
 LabVersions.settings
 organization   := "rocks.earlyeffect.lab"
@@ -105,6 +107,28 @@ lazy val imageIt = (project in file("modules/image-it"))
       if (overall != TestResult.Passed && overall != TestResult.Empty) throw new TestsFailedException
       overall
     },
+  )
+
+// Not aggregated, so root testFull stays the lab's suites. `lab/Measure.scala` is one
+// unmanaged source, not a source directory, so zipx still does not own `lab/`.
+lazy val docs = (project in file("docs"))
+  .enablePlugins(SpecularPlugin)
+  .settings(
+    name         := "zipx-ci-lab",
+    description  := "Measures one GitHub Actions run. Not a library.",
+    zipxPublish  := zipxOff,
+    homepage := Some(uri("https://github.com/early-effect/zipx-ci-lab")),
+    scmInfo  := Some(
+      ScmInfo(
+        uri("https://github.com/early-effect/zipx-ci-lab"),
+        "scm:git:https://github.com/early-effect/zipx-ci-lab.git",
+      )
+    ),
+    LabVersions.docs,
+    Compile / unmanagedSources += (ThisBuild / baseDirectory).value / "lab" / "Measure.scala",
+    specularBuildMain     := "lab.docs.BuildSite",
+    specularMetaProject   := Some(LocalProject("docs")),
+    specularSiteDirectory := (ThisBuild / baseDirectory).value / "target" / "site",
   )
 
 // Scala 2.13 only and outside the root aggregate, so root `++` never touches it. CI runs it under `++2.13.18`.
@@ -229,6 +253,14 @@ zipxCapabilities += Capability
     gate = Gate.Always,
   )
   .withAffectedBy(_.id == "legacy")
+
+// Staged deploys reject a Once-scoped Deploy capability, and this job is not per module.
+// Publish phase keeps it in ci.yml. Tag or dispatch only. The reusable workflow sets
+// SPECULAR_STRIP_CI. The site blanks the build version instead of inventing a coordinate.
+zipxCapabilities += ZipxDocs
+  .pages()
+  .andCondition(JobCondition.repositoryIs("early-effect/zipx-ci-lab"))
+  .copy(phase = Phase.Publish)
 
 zipxCapabilities += zipxTasks.deployGraph(
   participates = n => LabImages.Workers.contains(n.id),
