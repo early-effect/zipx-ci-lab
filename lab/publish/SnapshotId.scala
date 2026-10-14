@@ -266,13 +266,13 @@ object SnapshotId:
       val plugins = Files.readString(world.proof.resolve("project/plugins.sbt"))
       Files.createDirectories(dir.resolve("project"))
       Files.writeString(dir.resolve("project/plugins.sbt"), plugins)
-      Files.writeString(dir.resolve("project/build.properties"), "sbt.version=2.1.0-M3\n")
+      Files.writeString(dir.resolve("project/build.properties"), "sbt.version=2.1.0-RC1\n")
       Files.writeString(
         dir.resolve("project/ZipxVersions.scala"),
         s"""import zipx.*
            |
            |object Downstream extends ZipxVersions:
-           |  val sbt: SbtVersion = SbtVersion("2.1.0-M3")
+           |  val sbt: SbtVersion = SbtVersion("2.1.0-RC1")
            |  val scala: ScalaVersion = ScalaVersion("3.9.0")
            |  val upstream = Lib("rocks.earlyeffect.lab", "lib", "$upstream")
            |  val client = Ship("client", "0.2.0")
@@ -314,7 +314,7 @@ object SnapshotId:
   private def writeConsumer(dir: Path, repo: String, version: String): Unit =
     Files.createDirectories(dir.resolve("project"))
     Files.createDirectories(dir.resolve("src/main/scala/check"))
-    Files.writeString(dir.resolve("project/build.properties"), "sbt.version=2.1.0-M3\n")
+    Files.writeString(dir.resolve("project/build.properties"), "sbt.version=2.1.0-RC1\n")
     Files.writeString(
       dir.resolve("build.sbt"),
       s"""ThisBuild / scalaVersion := "3.9.0"

@@ -338,7 +338,7 @@ object Scenarios:
   private def writeConsumer(dir: Path, repo: String, version: String): Unit =
     Files.createDirectories(dir.resolve("project"))
     Files.createDirectories(dir.resolve("src/main/scala/check"))
-    Files.writeString(dir.resolve("project/build.properties"), "sbt.version=2.1.0-M3\n")
+    Files.writeString(dir.resolve("project/build.properties"), "sbt.version=2.1.0-RC1\n")
     Files.writeString(
       dir.resolve("build.sbt"),
       s"""ThisBuild / scalaVersion := "3.9.0"

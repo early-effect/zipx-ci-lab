@@ -162,7 +162,7 @@ lazy val root = (project in file("."))
 // Mirrors a production monorepo's configuration on purpose, pathologies included: Once Verify jobs with no affected
 // gate. Coverage as the required `test` and images and deploys on every merge were the 0.11.0 baseline (L2, L3).
 
-zipxPluginVersion    := Some("0.17.0-SNAPSHOT")
+zipxPluginVersion    := Some("0.19.1")
 zipxJavaVersion      := JdkVersion("25")
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
 zipxWorkflowDispatch := true
