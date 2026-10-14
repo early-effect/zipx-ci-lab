@@ -89,6 +89,9 @@ jobs:
     needs:
       - verify-gate
     if: "!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))"
+    permissions:
+      actions: read
+      contents: read
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
@@ -117,18 +120,24 @@ jobs:
             sbt -batch --error "zipxAffectedModules $BASE"
             modules=$(cat target/zipx-affected.json)
           elif [ "${{ github.event_name }}" = "push" ]; then
-            before="${{ github.event.before }}"
-            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
-              modules='["all"]'
-            else
-              BASE="$before"
+            # Diff against the last push this workflow finished green on, not the previous push: a cancelled
+            # or unapproved run ships nothing, so what it changed has to stay affected until a run ships it.
+            workflow=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq .workflow_id)
+            shipped=$(gh api "repos/${{ github.repository }}/actions/workflows/$workflow/runs?branch=${{ github.ref_name }}&event=push&status=success&per_page=1" \
+              --jq '.workflow_runs[0].head_sha // ""')
+            if [ -n "$shipped" ] && git merge-base --is-ancestor "$shipped" HEAD; then
+              BASE="$shipped"
               sbt -batch --error "zipxAffectedModules $BASE"
               modules=$(cat target/zipx-affected.json)
+            else
+              modules='["all"]'
             fi
           else
             modules='["all"]'
           fi
           echo "modules=$modules" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
   test:
     name: test
     runs-on: ubuntu-latest
@@ -154,8 +163,6 @@ jobs:
           cache-mode: save
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
-      - name: Pinned snapshots
-        run: echo "::warning title=zipx snapshots::pinned snapshots (rocks.earlyeffect:sbt-zipx:0.17.0-SNAPSHOT)"
       - name: test
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
