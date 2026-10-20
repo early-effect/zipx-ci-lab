@@ -162,14 +162,16 @@ lazy val root = (project in file("."))
 // Mirrors a production monorepo's configuration on purpose, pathologies included: Once Verify jobs with no affected
 // gate. Coverage as the required `test` and images and deploys on every merge were the 0.11.0 baseline (L2, L3).
 
-zipxPluginVersion    := Some("0.19.1")
+zipxPluginVersion    := Some("0.20.2-b23fbada89e6-SNAPSHOT")
 zipxJavaVersion      := JdkVersion("25")
+// Every sbt job uses the pinned sbtscala image. cs (version updates) and the Docker client are baked on top.
+zipxSbtImage         := true
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
 zipxWorkflowDispatch := true
 zipxAffectedOnPush   := true
 zipxAffectedPublish  := true
 zipxAffectedDeploy   := true
-zipxVersionUpdates   := false
+zipxVersionUpdates   := true
 // Images and deploys run from zipx-deploy.yml: staging on every merge and on PRs labeled deploy-stg, production only
 // from a dispatch on main.
 zipxDeployTrigger := DeployTrigger.staged(deployLabel = "deploy-stg", skipLabel = "no-deploy")
@@ -243,6 +245,7 @@ zipxCapabilities += zipxTasks
     phase = Phase.Verify,
     gate = Gate.Always,
   )
+  .withExtraSteps(LabChecks.dockerSocket)
   .withAffectedBy(n => LabImages.All.contains(n.id) || n.id == "imageIt")
 
 zipxCapabilities += Capability

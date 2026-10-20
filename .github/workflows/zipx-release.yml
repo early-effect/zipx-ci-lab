@@ -19,14 +19,44 @@ concurrency:
   group: zipx-release
   cancel-in-progress: false
 jobs:
+  zipx-env-image:
+    name: Publish zipx env image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.zipx-env.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Publish zipx env image
+        id: zipx-env
+        run: |
+          repo=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          image="ghcr.io/${repo}/zipx-env:df-987e06aa6589de7dc293c9d3a5a7d72ebf8a087ca877a0ebb96b37a806e7bf76"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          if docker manifest inspect "$image" >/dev/null 2>&1; then
+            echo "zipx-env $image is already published"
+            exit 0
+          fi
+          printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -f .github/zipx-env/Dockerfile -t "$image" .
+          docker push "$image"
+
   release:
     name: release
     runs-on: ubuntu-latest
+    needs:
+      - zipx-env-image
     if: github.event_name == 'push' || github.ref_name == github.event.repository.default_branch
     environment: zipx-release
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,6 +73,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: Tag is on the default branch
         if: github.event_name == 'push'
         run: |
@@ -104,7 +137,7 @@ jobs:
           cat > /tmp/zipx-pr-body.md <<'EOF'
           The release tag stays on the release commit. This branch opens the next catalog line with sbt zipxModverBump.
           EOF
-          gh pr create --title "Open the next snapshot line" --body-file /tmp/zipx-pr-body.md --head "zipx/modver-bump-${GITHUB_RUN_ID}" --label clean || true
+          gh pr create --title "Open the next snapshot line" --body-file /tmp/zipx-pr-body.md --head "zipx/modver-bump-${GITHUB_RUN_ID}" --label clean
 
         env:
           GH_TOKEN: ${{ github.token }}

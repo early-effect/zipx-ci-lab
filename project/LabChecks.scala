@@ -42,4 +42,8 @@ object LabChecks:
         .build
     )
   }
+  /** Proves the runner socket is mounted. The step text is also what makes zipx mount it on this job. */
+  val dockerSocket: Steps = Steps("docker-socket") { _ =>
+    List(Step.run(Script.strict(Exec("docker", Word.lit("info")))).named("Runner Docker socket").build)
+  }
 end LabChecks

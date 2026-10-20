@@ -35,24 +35,34 @@ inputs:
     description: When true, install cs via coursier/setup-action so the job can launch zipx-cli
     required: false
     default: "false"
+  baked-toolchain:
+    description: When true, JDK, sbt, Node, and cs are already in the job container
+    required: false
+    default: "false"
+  cache-home:
+    description: Absolute home for the LocalDir snapshot. Empty uses ~/.sbt and ~/.cache on the runner
+    required: false
+    default: ""
 runs:
   using: composite
   steps:
     - name: Setup JDK
+      if: inputs.baked-toolchain != 'true'
       uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
       with:
         distribution: temurin
         java-version: ${{ inputs.java-version }}
-    - uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
+    - if: inputs.baked-toolchain != 'true'
+      uses: sbt/setup-sbt@c7d2d6258b4bd0d3ec5129e6b3453199d3c79729 # v1.5.8
       with:
         disk-cache: ${{ inputs.sbt-disk-cache }}
     - name: Setup Coursier
-      if: inputs.coursier == 'true'
+      if: inputs.baked-toolchain != 'true' && inputs.coursier == 'true'
       uses: coursier/setup-action@9b7939bf01fd1185ce2babe16135168361bf2c62 # v3.0.2
       with:
         apps: cs
     - name: Setup Node
-      if: inputs.node-version != ''
+      if: inputs.baked-toolchain != 'true' && inputs.node-version != ''
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: ${{ inputs.node-version }}
@@ -85,7 +95,7 @@ runs:
 
       shell: bash
     - name: Cache sbt
-      if: inputs.cache-mode == 'save' && inputs.purge != 'true' && inputs.cache-epoch == ''
+      if: inputs.cache-home == '' && inputs.cache-mode == 'save' && inputs.purge != 'true' && inputs.cache-epoch == ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -100,7 +110,7 @@ runs:
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.release }}-build-
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
     - name: Cache sbt
-      if: inputs.cache-mode == 'save' && inputs.purge != 'true' && inputs.cache-epoch != ''
+      if: inputs.cache-home == '' && inputs.cache-mode == 'save' && inputs.purge != 'true' && inputs.cache-epoch != ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -114,7 +124,7 @@ runs:
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
     - name: Save sbt cache
-      if: inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch == ''
+      if: inputs.cache-home == '' && inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch == ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -124,7 +134,7 @@ runs:
           target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
     - name: Save sbt cache
-      if: inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch != ''
+      if: inputs.cache-home == '' && inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch != ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -134,7 +144,7 @@ runs:
           target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
     - name: Restore sbt cache
-      if: inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch == ''
+      if: inputs.cache-home == '' && inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch == ''
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -149,13 +159,91 @@ runs:
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.release }}-build-
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
     - name: Restore sbt cache
-      if: inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch != ''
+      if: inputs.cache-home == '' && inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch != ''
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
+          target
+        key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
+    - name: Cache sbt
+      if: inputs.cache-home != '' && inputs.cache-mode == 'save' && inputs.purge != 'true' && inputs.cache-epoch == ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.cache-home }}/.sbt
+          ${{ inputs.cache-home }}/.cache/sbt
+          ${{ inputs.cache-home }}/.cache/coursier
+          target
+        key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.release }}-build-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
+    - name: Cache sbt
+      if: inputs.cache-home != '' && inputs.cache-mode == 'save' && inputs.purge != 'true' && inputs.cache-epoch != ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.cache-home }}/.sbt
+          ${{ inputs.cache-home }}/.cache/sbt
+          ${{ inputs.cache-home }}/.cache/coursier
+          target
+        key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
+    - name: Save sbt cache
+      if: inputs.cache-home != '' && inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch == ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.cache-home }}/.sbt
+          ${{ inputs.cache-home }}/.cache/sbt
+          ${{ inputs.cache-home }}/.cache/coursier
+          target
+        key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
+    - name: Save sbt cache
+      if: inputs.cache-home != '' && inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch != ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.cache-home }}/.sbt
+          ${{ inputs.cache-home }}/.cache/sbt
+          ${{ inputs.cache-home }}/.cache/coursier
+          target
+        key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
+    - name: Restore sbt cache
+      if: inputs.cache-home != '' && inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch == ''
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.cache-home }}/.sbt
+          ${{ inputs.cache-home }}/.cache/sbt
+          ${{ inputs.cache-home }}/.cache/coursier
+          target
+        key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
+        restore-keys: |
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.release }}-build-
+          ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-
+    - name: Restore sbt cache
+      if: inputs.cache-home != '' && inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch != ''
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ inputs.cache-home }}/.sbt
+          ${{ inputs.cache-home }}/.cache/sbt
+          ${{ inputs.cache-home }}/.cache/coursier
           target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |

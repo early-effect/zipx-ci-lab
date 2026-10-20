@@ -12,6 +12,30 @@ concurrency:
   group: CI-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 jobs:
+  zipx-env-image:
+    name: Publish zipx env image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.zipx-env.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Publish zipx env image
+        id: zipx-env
+        run: |
+          repo=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          image="ghcr.io/${repo}/zipx-env:df-987e06aa6589de7dc293c9d3a5a7d72ebf8a087ca877a0ebb96b37a806e7bf76"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          if docker manifest inspect "$image" >/dev/null 2>&1; then
+            echo "zipx-env $image is already published"
+            exit 0
+          fi
+          printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -f .github/zipx-env/Dockerfile -t "$image" .
+          docker push "$image"
+
   verify-gate:
     name: verify-gate
     runs-on: ubuntu-latest
@@ -60,11 +84,16 @@ jobs:
     name: cache-rehydrate
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: needs.verify-gate.result == 'success' && needs.verify-gate.outputs.run == 'false'
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,20 +110,28 @@ jobs:
           cache-mode: save
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: cache-rehydrate
         run: sbt 'Test/compile'
   affected:
     name: affected
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: "!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))"
     permissions:
       actions: read
       contents: read
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     outputs:
       modules: ${{ steps.compute.outputs.modules }}
     steps:
@@ -112,6 +149,9 @@ jobs:
           sbt-disk-cache: "false"
           cache-mode: "off"
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: Compute affected modules
         id: compute
         run: |
@@ -142,11 +182,16 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: "!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))"
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -163,6 +208,11 @@ jobs:
           cache-mode: save
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
+      - name: Pinned snapshots
+        run: echo "::warning title=zipx snapshots::pinned snapshots (rocks.earlyeffect:sbt-zipx:0.20.2-b23fbada89e6-SNAPSHOT)"
       - name: test
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -176,11 +226,16 @@ jobs:
     name: fmt
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: "!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))"
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -197,6 +252,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: fmt
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -210,11 +268,16 @@ jobs:
     name: workflow-check
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: "!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))"
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -231,6 +294,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: workflow-check
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -244,11 +310,16 @@ jobs:
     name: advisories
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: "!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))"
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -265,6 +336,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: advisories
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -278,16 +352,21 @@ jobs:
     name: modver-suggest
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: (!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))) && (github.event_name == 'pull_request')
     permissions:
       contents: read
       pull-requests: write
       packages: read
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_MODVER_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -304,6 +383,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: Fetch PR base SHA
         run: git fetch --no-tags origin "$ZIPX_MODVER_BASE_SHA"
       - name: modver-suggest
@@ -319,15 +401,20 @@ jobs:
     name: modver-check
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - verify-gate
     if: (!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))) && (github.event_name == 'pull_request')
     permissions:
       contents: read
       packages: read
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
       ZIPX_MODVER_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -344,6 +431,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: Fetch PR base SHA
         run: git fetch --no-tags origin "$ZIPX_MODVER_BASE_SHA"
       - name: modver-check
@@ -359,6 +449,7 @@ jobs:
     name: image
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - affected
       - verify-gate
     if: (!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))) && (!cancelled() && needs.affected.outputs.modules != '[]')
@@ -370,9 +461,15 @@ jobs:
           - svcB
           - workerA
           - workerB
+    container:
+      image: ${{ needs.zipx-env-image.outputs.image }}
+      options: -v /var/run/docker.sock:/var/run/docker.sock
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - if: (contains(fromJson(needs.affected.outputs.modules), matrix.module) || contains(fromJson(needs.affected.outputs.modules), 'all'))
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -391,6 +488,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: image
         if: (contains(fromJson(needs.affected.outputs.modules), matrix.module) || contains(fromJson(needs.affected.outputs.modules), 'all'))
         run: |
@@ -417,12 +517,19 @@ jobs:
     name: image-it
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - affected
       - verify-gate
     if: (!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))) && (!cancelled() && (contains(fromJson(needs.affected.outputs.modules), 'imageIt') || contains(fromJson(needs.affected.outputs.modules), 'svcA') || contains(fromJson(needs.affected.outputs.modules), 'svcB') || contains(fromJson(needs.affected.outputs.modules), 'workerA') || contains(fromJson(needs.affected.outputs.modules), 'workerB') || contains(fromJson(needs.affected.outputs.modules), 'all')))
+    container:
+      image: ${{ needs.zipx-env-image.outputs.image }}
+      options: -v /var/run/docker.sock:/var/run/docker.sock
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -439,6 +546,13 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
+      - name: Runner Docker socket
+        run: |
+          set -euo pipefail
+          docker info
       - name: image-it
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -452,12 +566,17 @@ jobs:
     name: legacy
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - affected
       - verify-gate
     if: (!cancelled() && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && ((needs.verify-gate.result != 'success') || (needs.verify-gate.outputs.run == 'true'))) && (!cancelled() && (contains(fromJson(needs.affected.outputs.modules), 'legacy') || contains(fromJson(needs.affected.outputs.modules), 'all')))
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -474,6 +593,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: legacy
         run: |
           if [ "$ZIPX_VERIFY_CLEAN_FULL" = "true" ]; then
@@ -505,12 +627,17 @@ jobs:
     name: snapshots
     runs-on: ubuntu-latest
     needs:
+      - zipx-env-image
       - cache-rehydrate
       - verify
     if: (!cancelled() && needs.cache-rehydrate.result != 'failure' && needs.verify.result != 'failure') && ((((github.event_name == 'push') && ((github.ref == 'refs/heads/main'))) || (github.event_name == 'workflow_dispatch')))
+    container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
       GITHUB_TOKEN: ${{ github.token }}
+      HOME: /home/sbtuser
+      JAVA_OPTS: -Duser.home=/home/sbtuser
+      SBT_OPTS: -Duser.home=/home/sbtuser
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -527,6 +654,9 @@ jobs:
           cache-mode: restore
           purge: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'purge') }}
           cache-epoch: dbb740c11f3404c4
+          baked-toolchain: "true"
+          cache-home: /home/sbtuser
+          coursier: "false"
       - name: snapshots
         run: sbt 'zipxSnapshotPublish'
   docs:
