@@ -162,14 +162,17 @@ lazy val root = (project in file("."))
 // Mirrors a production monorepo's configuration on purpose, pathologies included: Once Verify jobs with no affected
 // gate. Coverage as the required `test` and images and deploys on every merge were the 0.11.0 baseline (L2, L3).
 
-zipxPluginVersion    := Some("0.19.1")
+zipxPluginVersion    := Some("0.21.0-c7ec039ab4d7-SNAPSHOT")
 zipxJavaVersion      := JdkVersion("25")
+// Every sbt job uses the pinned sbtscala image. Node (Scala.js), cs (version updates), and the Docker client are baked
+// on top. The builtin test is replaced so the same affected command also declares that Node version.
+zipxSbtImage         := true
 zipxCacheEpoch       := CacheEpoch.ShipCatalog
 zipxWorkflowDispatch := true
 zipxAffectedOnPush   := true
 zipxAffectedPublish  := true
 zipxAffectedDeploy   := true
-zipxVersionUpdates   := false
+zipxVersionUpdates   := true
 // Images and deploys run from zipx-deploy.yml: staging on every merge and on PRs labeled deploy-stg, production only
 // from a dispatch on main.
 zipxDeployTrigger := DeployTrigger.staged(deployLabel = "deploy-stg", skipLabel = "no-deploy")
@@ -185,6 +188,7 @@ zipxReleaseWorkflow := Some(
 // resolver list because it is the release workflow.
 zipxSnapshotRegistries += ArtifactRegistry.MavenCentral
 zipxCapabilities += Capability.snapshots()
+zipxCapabilities += Capability.testAffected(onPush = true).withNodeVersion(NodeVersion("22.23.3"))
 
 // The builtin test owns the LocalDir build snapshot. Coverage runs in zipx-coverage.yml, restores that snapshot, and
 // never saves one.
@@ -243,6 +247,7 @@ zipxCapabilities += zipxTasks
     phase = Phase.Verify,
     gate = Gate.Always,
   )
+  .withExtraSteps(LabChecks.dockerSocket)
   .withAffectedBy(n => LabImages.All.contains(n.id) || n.id == "imageIt")
 
 zipxCapabilities += Capability
