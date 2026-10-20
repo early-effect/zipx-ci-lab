@@ -162,7 +162,7 @@ lazy val root = (project in file("."))
 // Mirrors a production monorepo's configuration on purpose, pathologies included: Once Verify jobs with no affected
 // gate. Coverage as the required `test` and images and deploys on every merge were the 0.11.0 baseline (L2, L3).
 
-zipxPluginVersion    := Some("0.20.2-d614c3776a86-SNAPSHOT")
+zipxPluginVersion    := Some("0.20.2-db42cea292a6-SNAPSHOT")
 zipxJavaVersion      := JdkVersion("25")
 // Every sbt job uses the pinned sbtscala image. Node (Scala.js), cs (version updates), and the Docker client are baked
 // on top. The builtin test is replaced so the same affected command also declares that Node version.

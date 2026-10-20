@@ -32,7 +32,7 @@ jobs:
         id: zipx-env
         run: |
           repo=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
-          image="ghcr.io/${repo}/zipx-env:df-12bae8f3d126da65692d7ad37d5a46705a9751cb71c0fba704cdab603531c4fd"
+          image="ghcr.io/${repo}/zipx-env:df-8067b58b720ff3a797846716339b4b1d8f25629e9a44183a1ac1288b78c43b0f"
           echo "image=${image}" >> "$GITHUB_OUTPUT"
           if docker manifest inspect "$image" >/dev/null 2>&1; then
             echo "zipx-env $image is already published"

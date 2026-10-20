@@ -8,9 +8,9 @@ RUN set -eux; \
       arm64) node_arch=arm64 ;; \
       *) echo "zipx: unsupported architecture $arch" >&2; exit 1 ;; \
     esac; \
-    curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-${node_arch}.tar.xz"; \
-    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1; \
-    rm /tmp/node.tar.xz
+    curl -fsSL -o /tmp/node.tar.gz "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-${node_arch}.tar.gz"; \
+    tar -xzf /tmp/node.tar.gz -C /usr/local --strip-components=1; \
+    rm /tmp/node.tar.gz
 RUN set -eux; \
     case "$(uname -m)" in \
       x86_64) cs_arch=x86_64-pc-linux ;; \
