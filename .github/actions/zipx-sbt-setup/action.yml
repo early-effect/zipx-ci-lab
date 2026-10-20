@@ -102,7 +102,6 @@ runs:
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-
@@ -117,7 +116,6 @@ runs:
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-
@@ -131,7 +129,6 @@ runs:
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
     - name: Save sbt cache
       if: inputs.cache-home == '' && inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch != ''
@@ -141,7 +138,6 @@ runs:
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
     - name: Restore sbt cache
       if: inputs.cache-home == '' && inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch == ''
@@ -151,7 +147,6 @@ runs:
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-
@@ -166,7 +161,6 @@ runs:
           ~/.sbt
           ~/.cache/sbt
           ~/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-
@@ -180,7 +174,6 @@ runs:
           ${{ inputs.cache-home }}/.sbt
           ${{ inputs.cache-home }}/.cache/sbt
           ${{ inputs.cache-home }}/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-
@@ -195,7 +188,6 @@ runs:
           ${{ inputs.cache-home }}/.sbt
           ${{ inputs.cache-home }}/.cache/sbt
           ${{ inputs.cache-home }}/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-
@@ -209,7 +201,6 @@ runs:
           ${{ inputs.cache-home }}/.sbt
           ${{ inputs.cache-home }}/.cache/sbt
           ${{ inputs.cache-home }}/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
     - name: Save sbt cache
       if: inputs.cache-home != '' && inputs.cache-mode == 'save' && inputs.purge == 'true' && inputs.cache-epoch != ''
@@ -219,7 +210,6 @@ runs:
           ${{ inputs.cache-home }}/.sbt
           ${{ inputs.cache-home }}/.cache/sbt
           ${{ inputs.cache-home }}/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
     - name: Restore sbt cache
       if: inputs.cache-home != '' && inputs.cache-mode == 'restore' && inputs.purge != 'true' && inputs.cache-epoch == ''
@@ -229,7 +219,6 @@ runs:
           ${{ inputs.cache-home }}/.sbt
           ${{ inputs.cache-home }}/.cache/sbt
           ${{ inputs.cache-home }}/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ steps.cache-epoch.outputs.epoch }}-build-${{ github.run_id }}-
@@ -244,7 +233,6 @@ runs:
           ${{ inputs.cache-home }}/.sbt
           ${{ inputs.cache-home }}/.cache/sbt
           ${{ inputs.cache-home }}/.cache/coursier
-          target
         key: ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-${{ inputs.cache-key-suffix }}
         restore-keys: |
           ${{ inputs.runner-os }}-jdk${{ inputs.java-version }}-sbt-${{ inputs.cache-epoch }}-build-${{ github.run_id }}-

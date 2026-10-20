@@ -2,7 +2,7 @@
 resolvers += "zipx-github-packages-early-effect-zipx-ci-lab" at "https://maven.pkg.github.com/early-effect/zipx-ci-lab/"
 resolvers += "central-snapshots" at "https://central.sonatype.com/repository/maven-snapshots/"
 forceUpdatePeriod := Some(scala.concurrent.duration.Duration.Zero)
-addSbtPlugin("rocks.earlyeffect" % "sbt-zipx" % "0.20.2-db42cea292a6-SNAPSHOT")
+addSbtPlugin("rocks.earlyeffect" % "sbt-zipx" % "0.21.0-c7ec039ab4d7-SNAPSHOT")
 addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.2")
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.4.4")
