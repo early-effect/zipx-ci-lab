@@ -8,12 +8,15 @@ object LabVersions extends ZipxVersions:
   val scala: ScalaVersion  = ScalaVersion("3.9.0")
   val scala2: ScalaVersion = ScalaVersion("2.13.18")
 
-  /** Light Temurin 25 tag. The digest is the multi-arch manifest. `cs` and `docker-cli` are baked into the env image. */
+  /** Light Temurin 25 tag. The digest is the multi-arch manifest. Node, `cs`, and `docker-cli` are baked into the env
+    * image. Scala.js needs that Node: the runner has one, and the container does not.
+    */
   val sbtImage  = Pin(
     "sbt-image",
     "sbtscala/scala-sbt",
     "eclipse-temurin-25.0.4_7_2.x@sha256:792661398fa7a9c55e4aaf8cd7c040bb6e6cf93300d682037c3353c5a8a94f3f",
   )
+  val node      = Pin("sbt-image", "node", "22.23.3")
   val cs        = Pin("sbt-image", "cs", "2.1.26")
   val dockerCli = Pin("sbt-image", "docker-cli", "28.5.2")
 

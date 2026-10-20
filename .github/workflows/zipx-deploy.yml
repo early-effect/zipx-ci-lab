@@ -58,7 +58,7 @@ jobs:
         id: zipx-env
         run: |
           repo=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
-          image="ghcr.io/${repo}/zipx-env:df-987e06aa6589de7dc293c9d3a5a7d72ebf8a087ca877a0ebb96b37a806e7bf76"
+          image="ghcr.io/${repo}/zipx-env:df-12bae8f3d126da65692d7ad37d5a46705a9751cb71c0fba704cdab603531c4fd"
           echo "image=${image}" >> "$GITHUB_OUTPUT"
           if docker manifest inspect "$image" >/dev/null 2>&1; then
             echo "zipx-env $image is already published"
@@ -78,6 +78,7 @@ jobs:
       contents: read
       deployments: read
       pull-requests: read
+      packages: read
     container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
@@ -85,6 +86,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     outputs:
       sha: ${{ steps.plan.outputs.sha }}
       images: ${{ steps.plan.outputs.images }}
@@ -144,6 +148,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -202,6 +209,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -260,6 +270,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -318,6 +331,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -412,6 +428,7 @@ jobs:
     concurrency: zipx-deploy-deploy-workers-workerA-prd
     permissions:
       contents: read
+      packages: read
     container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
@@ -421,6 +438,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -457,6 +477,7 @@ jobs:
     concurrency: zipx-deploy-deploy-workers-workerA-stg
     permissions:
       contents: read
+      packages: read
     container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
@@ -466,6 +487,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -502,6 +526,7 @@ jobs:
     concurrency: zipx-deploy-deploy-workers-workerB-prd
     permissions:
       contents: read
+      packages: read
     container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
@@ -511,6 +536,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -547,6 +575,7 @@ jobs:
     concurrency: zipx-deploy-deploy-workers-workerB-stg
     permissions:
       contents: read
+      packages: read
     container: ${{ needs.zipx-env-image.outputs.image }}
     env:
       COURSIER_TTL: "0s"
@@ -556,6 +585,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -2,6 +2,16 @@
 FROM sbtscala/scala-sbt:eclipse-temurin-25.0.4_7_2.x@sha256:792661398fa7a9c55e4aaf8cd7c040bb6e6cf93300d682037c3353c5a8a94f3f
 USER root
 RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      amd64) node_arch=x64 ;; \
+      arm64) node_arch=arm64 ;; \
+      *) echo "zipx: unsupported architecture $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v22.23.3/node-v22.23.3-linux-${node_arch}.tar.xz"; \
+    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1; \
+    rm /tmp/node.tar.xz
+RUN set -eux; \
     case "$(uname -m)" in \
       x86_64) cs_arch=x86_64-pc-linux ;; \
       aarch64) cs_arch=aarch64-pc-linux ;; \

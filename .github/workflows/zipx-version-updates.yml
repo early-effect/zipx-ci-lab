@@ -25,7 +25,7 @@ jobs:
         id: zipx-env
         run: |
           repo=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
-          image="ghcr.io/${repo}/zipx-env:df-987e06aa6589de7dc293c9d3a5a7d72ebf8a087ca877a0ebb96b37a806e7bf76"
+          image="ghcr.io/${repo}/zipx-env:df-12bae8f3d126da65692d7ad37d5a46705a9751cb71c0fba704cdab603531c4fd"
           echo "image=${image}" >> "$GITHUB_OUTPUT"
           if docker manifest inspect "$image" >/dev/null 2>&1; then
             echo "zipx-env $image is already published"
@@ -47,6 +47,9 @@ jobs:
       HOME: /home/sbtuser
       JAVA_OPTS: -Duser.home=/home/sbtuser
       SBT_OPTS: -Duser.home=/home/sbtuser
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     steps:
       - name: Detect GitHub App credentials
         id: zipx-app
