@@ -17,4 +17,3 @@ object EncodedSpec extends ZIOSpecDefault:
       assertTrue(Name.make("ada").map(Banner.of) == Right("[svc-a] ada"))
     },
   ).provide(Greeter.layer)
-end EncodedSpec

@@ -18,18 +18,21 @@ object ZipxUnderTest:
       case Some(checkout) if !Files.isDirectory(checkout.resolve("modules/sbt-plugin")) =>
         ZIO.fail(ProofError.Failed("zipx-under-test", s"$checkout has no modules/sbt-plugin"))
       case Some(checkout) =>
-        ZIO.attemptBlocking(Files.createTempDirectory("zipx-under-test")).mapError { err =>
-          ProofError.Failed("zipx-under-test", String.valueOf(err.getMessage))
-        }.flatMap { dest =>
-          val set =
-            s"""set ThisBuild / publishTo := Some(Resolver.file("zipx-under-test", new java.io.File("${dest.toAbsolutePath}")))"""
-          val publish =
-            "shell/publish; workflow/publish; core/publish; syntax/publish; central/publish; aws/publish; plugin/publish"
-          Machine.sbt(checkout, List(s"$set; $publish"), Map.empty).flatMap { ran =>
-            if ran.exit == 0 then versionIn(dest).map(PluginUnderTest(dest, _))
-            else ZIO.fail(ProofError.Command(ran.command, ran.exit, ran.tail))
+        ZIO
+          .attemptBlocking(Files.createTempDirectory("zipx-under-test"))
+          .mapError { err =>
+            ProofError.Failed("zipx-under-test", String.valueOf(err.getMessage))
           }
-        }
+          .flatMap { dest =>
+            val set =
+              s"""set ThisBuild / publishTo := Some(Resolver.file("zipx-under-test", new java.io.File("${dest.toAbsolutePath}")))"""
+            val publish =
+              "shell/publish; workflow/publish; core/publish; syntax/publish; central/publish; aws/publish; plugin/publish"
+            Machine.sbt(checkout, List(s"$set; $publish"), Map.empty).flatMap { ran =>
+              if ran.exit == 0 then versionIn(dest).map(PluginUnderTest(dest, _))
+              else ZIO.fail(ProofError.Command(ran.command, ran.exit, ran.tail))
+            }
+          }
 
   /** The version directory `plugin/publish` wrote, so the proof never names a zipx version itself. */
   private def versionIn(repo: Path): IO[ProofError, String] =

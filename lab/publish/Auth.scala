@@ -11,12 +11,12 @@ import java.util.Base64
 final case class Credentials(user: String, password: String, token: String):
   def accept(header: Option[String]): Either[Response, String] =
     header match
-      case None => Left(Credentials.challenge)
+      case None      => Left(Credentials.challenge)
       case Some(raw) =>
         Credentials.bearer(raw) match
           case Some(got) if got == token => Right("bearer")
           case Some(_)                   => Left(Credentials.challenge)
-          case None =>
+          case None                      =>
             Credentials.basic(raw) match
               case Some((user, pass)) if user == this.user && pass == password => Right(s"basic:$user")
               case Some(("token", pass)) if pass == token                      => Right("basic:token")
@@ -48,6 +48,7 @@ object Credentials:
 
   def bearer(header: String): Option[String] =
     val prefix = "Bearer "
-    Option.when(header.regionMatches(true, 0, prefix, 0, prefix.length))(header.substring(prefix.length).trim)
+    Option
+      .when(header.regionMatches(true, 0, prefix, 0, prefix.length))(header.substring(prefix.length).trim)
       .filter(_.nonEmpty)
 end Credentials

@@ -9,31 +9,36 @@ import scala.jdk.CollectionConverters.*
 object ProofClone:
   private val ZipxPin = """addSbtPlugin("rocks.earlyeffect" % "sbt-zipx" % """
 
-  /** The proof's `plugins.sbt` with its sbt-zipx line pinned at the build under test, resolved from that build's repo. */
+  /** The proof's `plugins.sbt` with its sbt-zipx line pinned at the build under test, resolved from that build's repo.
+    */
   def prepare(source: Path, plugin: PluginUnderTest): IO[ProofError, Path] =
-    ZIO.attemptBlocking {
-      val dest = Files.createTempDirectory("zipx-proof-clone")
-      copy(source, dest)
-      val plugins = dest.resolve("project/plugins.sbt")
-      val lines   = Files.readAllLines(plugins).asScala.toList
-      if !lines.exists(_.startsWith(ZipxPin)) then throw new RuntimeException(s"$plugins does not pin sbt-zipx")
-      val pinned = lines.map(line => if line.startsWith(ZipxPin) then s"""$ZipxPin"${plugin.version}")""" else line)
-      val rewritten =
-        (s"""resolvers += "zipx-under-test" at "${plugin.repo.toAbsolutePath.toUri}"""" :: pinned).mkString("", "\n", "\n")
-      Files.writeString(plugins, rewritten)
-      Files.writeString(
-        dest.resolve(".gitignore"),
-        "target/\n.bsp/\n.bloop/\nproject/target/\nproject/project/\n",
-      )
-      dest
-    }.mapError(err => ProofError.Failed("proof-clone", String.valueOf(err.getMessage))).flatMap { dest =>
-      git(dest, "init", "-b", "main") *>
-        git(dest, "config", "user.email", "zipx@example.com") *>
-        git(dest, "config", "user.name", "zipx") *>
-        git(dest, "add", "-A") *>
-        git(dest, "-c", "user.email=zipx@example.com", "-c", "user.name=zipx", "commit", "-m", "init")
-          .as(dest)
-    }
+    ZIO
+      .attemptBlocking {
+        val dest = Files.createTempDirectory("zipx-proof-clone")
+        copy(source, dest)
+        val plugins = dest.resolve("project/plugins.sbt")
+        val lines   = Files.readAllLines(plugins).asScala.toList
+        if !lines.exists(_.startsWith(ZipxPin)) then throw new RuntimeException(s"$plugins does not pin sbt-zipx")
+        val pinned = lines.map(line => if line.startsWith(ZipxPin) then s"""$ZipxPin"${plugin.version}")""" else line)
+        val rewritten =
+          (s"""resolvers += "zipx-under-test" at "${plugin.repo.toAbsolutePath.toUri}"""" :: pinned)
+            .mkString("", "\n", "\n")
+        Files.writeString(plugins, rewritten)
+        Files.writeString(
+          dest.resolve(".gitignore"),
+          "target/\n.bsp/\n.bloop/\nproject/target/\nproject/project/\n",
+        )
+        dest
+      }
+      .mapError(err => ProofError.Failed("proof-clone", String.valueOf(err.getMessage)))
+      .flatMap { dest =>
+        git(dest, "init", "-b", "main") *>
+          git(dest, "config", "user.email", "zipx@example.com") *>
+          git(dest, "config", "user.name", "zipx") *>
+          git(dest, "add", "-A") *>
+          git(dest, "-c", "user.email=zipx@example.com", "-c", "user.name=zipx", "commit", "-m", "init")
+            .as(dest)
+      }
 
   def head(dir: Path): IO[ProofError, String] =
     Machine.run(dir, List("git", "rev-parse", "HEAD")).flatMap { ran =>

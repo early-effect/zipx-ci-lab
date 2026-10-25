@@ -25,9 +25,14 @@ object Fact:
 /** In-memory coordinates. Maven bodies stay, because a resolve is a GET of those bytes. Image blob bodies are hashed
   * and dropped; the manifest and the tag map stay.
   */
-final class Ledger(facts: Ref[Chunk[Fact]], files: Ref[Map[String, Chunk[Byte]]], blobs: Ref[Map[String, Long]],
-    uploads: Ref[Map[String, Ledger.Upload]], tags: Ref[Map[String, Map[String, String]]],
-    manifests: Ref[Map[String, Ledger.Manifest]]):
+final class Ledger(
+    facts: Ref[Chunk[Fact]],
+    files: Ref[Map[String, Chunk[Byte]]],
+    blobs: Ref[Map[String, Long]],
+    uploads: Ref[Map[String, Ledger.Upload]],
+    tags: Ref[Map[String, Map[String, String]]],
+    manifests: Ref[Map[String, Ledger.Manifest]],
+):
 
   def record(fact: Fact): UIO[Unit] = facts.update(_ :+ fact)
 
@@ -61,7 +66,7 @@ final class Ledger(facts: Ref[Chunk[Fact]], files: Ref[Map[String, Chunk[Byte]]]
   def appendUpload(id: String, body: Chunk[Byte]): UIO[Option[Long]] =
     uploads.modify { map =>
       map.get(id) match
-        case None => (None, map)
+        case None     => (None, map)
         case Some(up) =>
           if body.nonEmpty then up.digest.update(body.toArray)
           val next = up.copy(size = up.size + body.length)
@@ -72,7 +77,7 @@ final class Ledger(facts: Ref[Chunk[Fact]], files: Ref[Map[String, Chunk[Byte]]]
   def finishUpload(id: String, body: Chunk[Byte], expected: String): UIO[Either[String, (String, Long)]] =
     uploads.modify { map =>
       map.get(id) match
-        case None => (Left("unknown upload"), map)
+        case None     => (Left("unknown upload"), map)
         case Some(up) =>
           if body.nonEmpty then up.digest.update(body.toArray)
           val got  = Ledger.hex(up.digest.digest())

@@ -8,6 +8,7 @@ object Name:
     if trimmed.isEmpty then Left(NameError.Blank) else Right(trimmed)
 
   extension (name: Name) def value: String = name
+end Name
 
 enum NameError:
   case Blank

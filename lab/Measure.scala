@@ -32,6 +32,7 @@ object Args:
     case run :: Nil                     => RunId.parse(run).map(Args(_, Repo.Lab))
     case run :: "--repo" :: repo :: Nil => RunId.parse(run).flatMap(id => Repo.parse(repo).map(Args(id, _)))
     case _                              => Left(MeasureError.BadArgs(usage))
+end Args
 
 enum MeasureError:
   case BadArgs(usage: String)
@@ -129,7 +130,6 @@ object LogFacts:
         .flatMap(_.fromJson[List[String]].toOption)
         .nextOption(),
     )
-  end from
 end LogFacts
 
 final case class JobReport(
@@ -199,6 +199,7 @@ final case class Gh(repo: Repo):
   /** Job logs carry ANSI colour codes, which `gh api` refuses to print without the flag. [[LogFacts]] strips them. */
   def jobLog(jobId: Long): IO[MeasureError, String] =
     Gh.exec(List("gh", "api", "--allow-escape-sequences", s"repos/${repo.value}/actions/jobs/$jobId/logs"))
+end Gh
 
 object Gh:
   def layer(repo: Repo): ULayer[Gh] = ZLayer.succeed(Gh(repo))
@@ -262,7 +263,6 @@ object Report:
         ),
       )
     }
-end Report
 
 object Measure extends ZIOAppDefault:
   def run =

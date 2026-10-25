@@ -11,7 +11,9 @@ object DockerCli:
   /** Process launch is the impure edge here; a non-zero exit from `docker image inspect` means the tag is absent. */
   def inspect(image: String): IO[ImageError, Unit] =
     ZIO
-      .attemptBlocking(new ProcessBuilder("docker", "image", "inspect", image).redirectErrorStream(true).start().waitFor())
+      .attemptBlocking(
+        new ProcessBuilder("docker", "image", "inspect", image).redirectErrorStream(true).start().waitFor()
+      )
       .mapError(e => ImageError.DockerUnavailable(image, e.getMessage))
       .filterOrFail(_ == 0)(ImageError.Missing(image))
       .unit
@@ -26,3 +28,4 @@ object ImagesSpec extends ZIOSpecDefault:
       yield assertTrue(images.size == 4, failures.isEmpty)
     }
   )
+end ImagesSpec

@@ -6,8 +6,8 @@ import zio.json.*
 
 import java.util.UUID
 
-/** Docker Registry HTTP API v2, push side. Blob bodies are hashed and discarded. A manifest and its tags stay, which
-  * is the location a push claims. GET of a blob is 404: the proof does not pull layers back.
+/** Docker Registry HTTP API v2, push side. Blob bodies are hashed and discarded. A manifest and its tags stay, which is
+  * the location a push claims. GET of a blob is 404: the proof does not pull layers back.
   */
 object ImageRegistry:
   private val Markers = Set("blobs", "manifests", "tags")
@@ -47,28 +47,28 @@ object ImageRegistry:
     if segments.headOption.contains("v2") then
       val rest = segments.drop(1)
       rest.zipWithIndex.collectFirst { case (segment, i) if Markers.contains(segment) => i } match
-        case None => None
+        case None     => None
         case Some(at) =>
           val name = rest.take(at).mkString("/")
           val tail = rest.drop(at).toList
           if name.isEmpty then None
           else
             tail match
-              case "blobs" :: "uploads" :: Nil              => Some(Call.Start(name))
-              case "blobs" :: "uploads" :: id :: Nil        => Some(Call.Continue(name, id))
-              case "blobs" :: "sha256" :: hex :: Nil        => Some(Call.Blob(name, s"sha256:$hex"))
-              case "blobs" :: digest :: Nil                 => Some(Call.Blob(name, digest))
-              case "manifests" :: ref :: Nil                => Some(Call.Manifests(name, ref))
-              case "tags" :: "list" :: Nil                  => Some(Call.Tags(name))
-              case _                                        => None
+              case "blobs" :: "uploads" :: Nil       => Some(Call.Start(name))
+              case "blobs" :: "uploads" :: id :: Nil => Some(Call.Continue(name, id))
+              case "blobs" :: "sha256" :: hex :: Nil => Some(Call.Blob(name, s"sha256:$hex"))
+              case "blobs" :: digest :: Nil          => Some(Call.Blob(name, digest))
+              case "manifests" :: ref :: Nil         => Some(Call.Manifests(name, ref))
+              case "tags" :: "list" :: Nil           => Some(Call.Tags(name))
+              case _                                 => None
     else None
 
   private enum Call(val repository: String, val path: String):
-    case Start(name: String) extends Call(name, s"/v2/$name/blobs/uploads/")
-    case Continue(name: String, id: String) extends Call(name, s"/v2/$name/blobs/uploads/$id")
-    case Blob(name: String, digest: String) extends Call(name, s"/v2/$name/blobs/$digest")
+    case Start(name: String)                  extends Call(name, s"/v2/$name/blobs/uploads/")
+    case Continue(name: String, id: String)   extends Call(name, s"/v2/$name/blobs/uploads/$id")
+    case Blob(name: String, digest: String)   extends Call(name, s"/v2/$name/blobs/$digest")
     case Manifests(name: String, ref: String) extends Call(name, s"/v2/$name/manifests/$ref")
-    case Tags(name: String) extends Call(name, s"/v2/$name/tags/list")
+    case Tags(name: String)                   extends Call(name, s"/v2/$name/tags/list")
 
     def run(
         ledger: Ledger,
@@ -200,6 +200,7 @@ object ImageRegistry:
           note(ledger, authority, name, "GET", path, None, json.length.toLong, auth, 200)
             .as(distribution(Response.json(json)))
         }
+  end Call
 
   /** A POST that already carries `?digest=` is a monolithic upload. The body is hashed and dropped. */
   private def monolithic(
@@ -211,9 +212,9 @@ object ImageRegistry:
       expected: String,
       auth: String,
   ): UIO[Response] =
-    val got    = Ledger.sha256(body)
-    val want   = expected.stripPrefix("sha256:")
-    val path   = s"/v2/$name/blobs/uploads/"
+    val got  = Ledger.sha256(body)
+    val want = expected.stripPrefix("sha256:")
+    val path = s"/v2/$name/blobs/uploads/"
     if got != want then
       note(ledger, authority, name, "POST", path, Some(expected), body.length.toLong, auth, 400)
         .as(Response.badRequest(s"digest sha256:$got did not match $expected"))
@@ -244,7 +245,7 @@ object ImageRegistry:
   ): UIO[Option[Ledger.Manifest]] =
     ledger.manifest(s"$authority/$name/$ref").flatMap {
       case some @ Some(_) => ZIO.succeed(some)
-      case None =>
+      case None           =>
         ledger.tagList(s"$authority/$name").flatMap { tags =>
           tags.get(ref) match
             case None         => ZIO.succeed(None)
