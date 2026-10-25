@@ -90,8 +90,8 @@ object MavenRepo:
 
   /** A checksum file must describe the stored sibling. A checksum uploaded before its artifact must describe that
     * artifact when it arrives. A snapshot replace skips that check: the previous sidecar still describes the previous
-    * bytes, and the next checksum PUT is checked against the new bytes. Absent siblings wait, so either upload order
-    * of one publish is accepted.
+    * bytes, and the next checksum PUT is checked against the new bytes. Absent siblings wait, so either upload order of
+    * one publish is accepted.
     */
   private def checksumAgrees(
       ledger: Ledger,
@@ -109,12 +109,14 @@ object MavenRepo:
       case None if replacing =>
         ZIO.succeed(None)
       case None =>
-        ZIO.foreach(List("sha1", "sha256", "md5")) { algorithm =>
-          ledger.file(key + suffix(algorithm)).map {
-            case None       => None
-            case Some(side) => agree(algorithm, side, body, path)
+        ZIO
+          .foreach(List("sha1", "sha256", "md5")) { algorithm =>
+            ledger.file(key + suffix(algorithm)).map {
+              case None       => None
+              case Some(side) => agree(algorithm, side, body, path)
+            }
           }
-        }.map(_.flatten.headOption)
+          .map(_.flatten.headOption)
 
   private def agree(
       algorithm: String,
@@ -123,7 +125,7 @@ object MavenRepo:
       path: String,
   ): Option[String] =
     token(checksumFile) match
-      case None => Some(s"$path checksum is not a hex digest")
+      case None      => Some(s"$path checksum is not a hex digest")
       case Some(got) =>
         val expect = algorithm match
           case "sha1"   => Ledger.sha1(artifact)

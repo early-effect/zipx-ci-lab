@@ -10,3 +10,4 @@ object Greeter:
   val layer: ULayer[Greeter] = ZLayer.succeed(Greeter("hello"))
 
   def greet(name: Name): URIO[Greeter, String] = ZIO.serviceWithZIO[Greeter](_.greet(name))
+end Greeter

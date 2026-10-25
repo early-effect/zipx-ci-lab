@@ -8,8 +8,8 @@ import java.nio.charset.StandardCharsets
 
 /** The wires a publish uses, checked with heddle's own client before sbt or Docker run. */
 object Protocol:
-  private val Jar = "rocks/earlyeffect/lab/probe/0.0.1/probe-0.0.1.jar"
-  private val Snap = "rocks/earlyeffect/lab/probe/0.0.1-SNAPSHOT/probe-0.0.1-SNAPSHOT.jar"
+  private val Jar   = "rocks/earlyeffect/lab/probe/0.0.1/probe-0.0.1.jar"
+  private val Snap  = "rocks/earlyeffect/lab/probe/0.0.1-SNAPSHOT/probe-0.0.1-SNAPSHOT.jar"
   private val Image = "lab-proof"
 
   def run(world: World, checks: Ref[List[Check]]): ZIO[Client, ProofError, Unit] =
@@ -36,7 +36,12 @@ object Protocol:
 
   private def rejected(world: World, checks: Ref[List[Check]], maven: String): ZIO[Client, ProofError, Unit] =
     for
-      res <- Http.send(Method.PUT, s"$maven/releases/$Jar", bytes("nope"), "Authorization" -> Http.basic("zipx", "wrong"))
+      res <- Http.send(
+        Method.PUT,
+        s"$maven/releases/$Jar",
+        bytes("nope"),
+        "Authorization" -> Http.basic("zipx", "wrong"),
+      )
       _   <- Http.status(res, 401, "rejected put")
       key <- world.ledger.file(s"releases/$Jar")
       _   <- gate(checks, "maven-rejected", key.isEmpty, "wrong password is 401 and stores nothing")
@@ -56,13 +61,27 @@ object Protocol:
       _   <- Http
         .send(Method.PUT, s"$url.sha1", bytes(s"$sha\n"), "Authorization" -> auth)
         .flatMap(Http.status(_, 201, "sha1 put"))
-      got <- Http.send(Method.GET, url, Chunk.empty, "Authorization" -> auth).flatMap(Http.status(_, 200, "release get"))
-      _   <- gate(checks, "maven-checksum", got.body.strict.contains(body), "sha1 sidecar accepted and the jar reads back")
-      _   <- Http
+      got <- Http
+        .send(Method.GET, url, Chunk.empty, "Authorization" -> auth)
+        .flatMap(Http.status(_, 200, "release get"))
+      _ <- gate(
+        checks,
+        "maven-checksum",
+        got.body.strict.contains(body),
+        "sha1 sidecar accepted and the jar reads back",
+      )
+      _ <- Http
         .send(Method.PUT, url, bytes("second-release"), "Authorization" -> auth)
         .flatMap(Http.status(_, 409, "release overwrite"))
-      again <- Http.send(Method.GET, url, Chunk.empty, "Authorization" -> auth).flatMap(Http.status(_, 200, "release get after 409"))
-      _     <- gate(checks, "maven-release-409", again.body.strict.contains(body) && put.status.code == 201, "second put is 409 and the first digest stays")
+      again <- Http
+        .send(Method.GET, url, Chunk.empty, "Authorization" -> auth)
+        .flatMap(Http.status(_, 200, "release get after 409"))
+      _ <- gate(
+        checks,
+        "maven-release-409",
+        again.body.strict.contains(body) && put.status.code == 201,
+        "second put is 409 and the first digest stays",
+      )
     yield ()
 
   private def snapshotReplaces(
@@ -71,33 +90,49 @@ object Protocol:
       maven: String,
       auth: String,
   ): ZIO[Client, ProofError, Unit] =
-    val url = s"$maven/snapshots/$Snap"
+    val url  = s"$maven/snapshots/$Snap"
     val next = bytes("snapshot-two")
     for
-      _   <- Http.send(Method.PUT, url, bytes("snapshot-one"), "Authorization" -> auth).flatMap(Http.status(_, 201, "snapshot put"))
+      _ <- Http
+        .send(Method.PUT, url, bytes("snapshot-one"), "Authorization" -> auth)
+        .flatMap(Http.status(_, 201, "snapshot put"))
       _   <- Http.send(Method.PUT, url, next, "Authorization" -> auth).flatMap(Http.status(_, 201, "snapshot replace"))
-      got <- Http.send(Method.GET, url, Chunk.empty, "Authorization" -> auth).flatMap(Http.status(_, 200, "snapshot get"))
-      _   <- gate(checks, "maven-snapshot-replace", got.body.strict.contains(next), "a second snapshot put replaces the bytes")
+      got <- Http
+        .send(Method.GET, url, Chunk.empty, "Authorization" -> auth)
+        .flatMap(Http.status(_, 200, "snapshot get"))
+      _ <- gate(
+        checks,
+        "maven-snapshot-replace",
+        got.body.strict.contains(next),
+        "a second snapshot put replaces the bytes",
+      )
     yield ()
 
   private def bearerReads(world: World, checks: Ref[List[Check]], maven: String): ZIO[Client, ProofError, Unit] =
     val url = s"$maven/snapshots/$Snap"
     for
-      got <- Http.send(Method.GET, url, Chunk.empty, "Authorization" -> Http.labBearer).flatMap(Http.status(_, 200, "bearer get"))
-      _   <- gate(checks, "maven-bearer-get", got.body.strict.contains(bytes("snapshot-two")), "metadata read accepts Bearer")
+      got <- Http
+        .send(Method.GET, url, Chunk.empty, "Authorization" -> Http.labBearer)
+        .flatMap(Http.status(_, 200, "bearer get"))
+      _ <- gate(
+        checks,
+        "maven-bearer-get",
+        got.body.strict.contains(bytes("snapshot-two")),
+        "metadata read accepts Bearer",
+      )
     yield ()
 
   private def docker(world: World, checks: Ref[List[Check]]): ZIO[Client, ProofError, Unit] =
-    val base = world.bound.imageA.base
-    val auth = "Authorization" -> Http.labBasic
-    val body = bytes("layer")
-    val hex  = Ledger.sha256(body)
+    val base   = world.bound.imageA.base
+    val auth   = "Authorization" -> Http.labBasic
+    val body   = bytes("layer")
+    val hex    = Ledger.sha256(body)
     val digest = s"sha256:$hex"
     for
       anon <- Http.send(Method.GET, s"$base/v2/", Chunk.empty).flatMap(Http.status(_, 401, "docker ping"))
       ping <- Http.send(Method.GET, s"$base/v2/", Chunk.empty, auth).flatMap(Http.status(_, 200, "docker ping authed"))
       ver  <- Http.header(ping, "Docker-Distribution-Api-Version", "docker ping")
-      _    <- gate(checks, "docker-ping", anon.status.code == 401 && ver == "registry/2.0", "challenge then registry/2.0")
+      _ <- gate(checks, "docker-ping", anon.status.code == 401 && ver == "registry/2.0", "challenge then registry/2.0")
       open <- Http
         .send(Method.POST, s"$base/v2/$Image/blobs/uploads/", Chunk.empty, auth)
         .flatMap(Http.status(_, 202, "open upload"))
@@ -109,8 +144,8 @@ object Protocol:
       head <- Http
         .send(Method.HEAD, s"$base/v2/$Image/blobs/$digest", Chunk.empty, auth)
         .flatMap(Http.status(_, 200, "blob head"))
-      len  <- Http.header(head, "Content-Length", "blob head")
-      got  <- Http.header(head, "Docker-Content-Digest", "blob head")
+      len     <- Http.header(head, "Content-Length", "blob head")
+      got     <- Http.header(head, "Docker-Content-Digest", "blob head")
       missing <- Http
         .send(Method.GET, s"$base/v2/$Image/blobs/$digest", Chunk.empty, auth)
         .flatMap(Http.status(_, 404, "blob get"))
@@ -126,8 +161,15 @@ object Protocol:
       mount <- Http
         .send(Method.POST, s"$base/v2/$Image/blobs/uploads/?mount=sha256:${"ab" * 32}", Chunk.empty, auth)
         .flatMap(Http.status(_, 202, "missing mount"))
-      _ <- gate(checks, "docker-mount-miss", mono.status.code == 201 && mount.status.code == 202, "a missing mount starts an upload")
-      manifest = bytes("""{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json","layers":[]}""")
+      _ <- gate(
+        checks,
+        "docker-mount-miss",
+        mono.status.code == 201 && mount.status.code == 202,
+        "a missing mount starts an upload",
+      )
+      manifest = bytes(
+        """{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json","layers":[]}"""
+      )
       put <- Http
         .send(
           Method.PUT,
@@ -137,15 +179,25 @@ object Protocol:
           "Content-Type" -> "application/vnd.docker.distribution.manifest.v2+json",
         )
         .flatMap(Http.status(_, 201, "manifest put"))
-      man <- Http.header(put, "Docker-Content-Digest", "manifest put")
+      man    <- Http.header(put, "Docker-Content-Digest", "manifest put")
       listed <- Http
         .send(Method.GET, s"$base/v2/$Image/tags/list", Chunk.empty, auth)
         .flatMap(Http.status(_, 200, "tags"))
-      _ <- gate(checks, "docker-manifest", listed.body.text.exists(_.contains("proof")) && man.startsWith("sha256:"), "tag list names the pushed tag")
+      _ <- gate(
+        checks,
+        "docker-manifest",
+        listed.body.text.exists(_.contains("proof")) && man.startsWith("sha256:"),
+        "tag list names the pushed tag",
+      )
       other <- Http
         .send(Method.GET, s"${world.bound.imageC.base}/v2/$Image/tags/list", Chunk.empty, auth)
         .flatMap(Http.status(_, 200, "unlisted tags"))
-      _ <- gate(checks, "docker-unlisted", other.body.text.exists(_.contains(""""tags":[]""")), "an authority with no push has an empty tag list")
+      _ <- gate(
+        checks,
+        "docker-unlisted",
+        other.body.text.exists(_.contains(""""tags":[]""")),
+        "an authority with no push has an empty tag list",
+      )
     yield ()
 
   private def gate(checks: Ref[List[Check]], name: String, ok: Boolean, detail: String): IO[ProofError, Unit] =

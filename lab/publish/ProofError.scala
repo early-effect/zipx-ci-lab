@@ -10,11 +10,11 @@ enum ProofError:
   case Failed(name: String, detail: String)
 
   def message: String = this match
-    case Cert(detail)                 => s"certificate: $detail"
-    case Bind(detail)                 => s"bind: $detail"
-    case Protocol(detail)             => s"protocol: $detail"
-    case Command(args, exit, detail)  => s"${args.mkString(" ")} exited $exit\n$detail"
-    case Failed(name, detail)         => s"$name: $detail"
+    case Cert(detail)                => s"certificate: $detail"
+    case Bind(detail)                => s"bind: $detail"
+    case Protocol(detail)            => s"protocol: $detail"
+    case Command(args, exit, detail) => s"${args.mkString(" ")} exited $exit\n$detail"
+    case Failed(name, detail)        => s"$name: $detail"
 end ProofError
 
 final case class Check(name: String, passed: Boolean, detail: String) derives JsonEncoder

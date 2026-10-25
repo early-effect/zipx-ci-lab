@@ -12,8 +12,8 @@ object Registry:
   val ImageBPort = 5445
   val ImageCPort = 5446
 
-  /** The daemon's name for these listeners. `127.0.0.1` is an insecure HTTP registry, and a VM daemon's loopback is
-    * not this process. Colima forwards this name to the host loopback.
+  /** The daemon's name for these listeners. `127.0.0.1` is an insecure HTTP registry, and a VM daemon's loopback is not
+    * this process. Colima forwards this name to the host loopback.
     */
   val DockerRegistryHost = "host.docker.internal"
 
@@ -29,7 +29,7 @@ object Registry:
 
   def bind(tls: Tls, ledger: Ledger): ZIO[Scope, ProofError, Bound] =
     for
-      maven <- listen("maven", MavenPort, tls, req => MavenRepo.handle(ledger, "maven", req))
+      maven  <- listen("maven", MavenPort, tls, req => MavenRepo.handle(ledger, "maven", req))
       imageA <- listen(
         "image-a",
         ImageAPort,
