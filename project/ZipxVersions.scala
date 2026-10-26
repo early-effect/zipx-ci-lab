@@ -12,7 +12,7 @@ object LabVersions extends ZipxVersions:
   val zioTestSbt = zio.mod("zio-test-sbt").test
   val zioJson    = Lib("dev.zio", "zio-json", "1.1.0")
   val scodecBits = Lib("org.scodec", "scodec-bits", "1.2.5")
-  val fansi      = Lib("com.lihaoyi", "fansi", "0.5.1")
+  val fansi      = Lib("com.lihaoyi", "fansi", "0.5.0")
 
   /** Docs only. The lab is not a library, and these rows are not an install coordinate for it. */
   val specular        = Lib("rocks.earlyeffect", "specular-core", "0.20.0")
